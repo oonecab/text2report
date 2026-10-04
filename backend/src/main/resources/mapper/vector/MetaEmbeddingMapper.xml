@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.vector.mapper.MetaEmbeddingMapper">
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.vector.entity.MetaEmbedding">
+        <id column="id" property="id"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_id" property="sourceId"/>
+        <result column="content_text" property="contentText"/>
+        <result column="embedding" property="embedding" typeHandler="com.text2report.domain.vector.typehandler.PgVectorTypeHandler"/>
+        <result column="model_version" property="modelVersion"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="similarity" property="similarity"/>
+    </resultMap>
+
+    <select id="searchSimilar" resultMap="BaseResultMap">
+        SELECT id, source_type, source_id, content_text, embedding, model_version, created_at, updated_at,
+               1 - (embedding &lt;=&gt; #{queryVector, typeHandler=com.text2report.domain.vector.typehandler.PgVectorTypeHandler}::vector) AS similarity
+        FROM meta_embedding
+        WHERE source_type = #{sourceType}
+        ORDER BY embedding &lt;=&gt; #{queryVector, typeHandler=com.text2report.domain.vector.typehandler.PgVectorTypeHandler}::vector
+        LIMIT #{topK}
+    </select>
+
+    <insert id="upsertEmbedding">
+        INSERT INTO meta_embedding (source_type, source_id, content_text, embedding, model_version, updated_at)
+        VALUES (
+            #{sourceType},
+            #{sourceId},
+            #{contentText},
+            #{embedding, typeHandler=com.text2report.domain.vector.typehandler.PgVectorTypeHandler},
+            #{modelVersion},
+            NOW()
+        )
+        ON CONFLICT (source_type, source_id) DO UPDATE
+        SET content_text = EXCLUDED.content_text,
+            embedding = EXCLUDED.embedding,
+            model_version = EXCLUDED.model_version,
+            updated_at = NOW()
+    </insert>
+
+    <delete id="deleteBySource">
+        DELETE FROM meta_embedding
+        WHERE source_type = #{sourceType}
+          AND source_id = #{sourceId}
+    </delete>
+
+    <select id="countByType" resultType="map">
+        SELECT source_type, COUNT(*) AS cnt
+        FROM meta_embedding
+        GROUP BY source_type
+    </select>
+</mapper>

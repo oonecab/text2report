@@ -1,0 +1,530 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #f5f7fa;
+  -webkit-font-smoothing: antialiased;
+  color: #111827;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(22, 119, 255, 0.12), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.12), transparent 28%),
+    linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+}
+
+.login-page__glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(10px);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.login-page__glow--blue {
+  top: 12%;
+  left: calc(50% - 320px);
+  width: 220px;
+  height: 220px;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.login-page__glow--gold {
+  right: calc(50% - 360px);
+  bottom: 14%;
+  width: 240px;
+  height: 240px;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.08),
+    0 10px 24px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.login-card__header {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.login-card__brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.login-card__brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #60a5fa);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.login-card__brand-icon svg {
+  display: block;
+}
+
+.login-card__brand-text {
+  white-space: nowrap;
+}
+
+.login-card__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 4vw, 34px);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.03em;
+}
+
+.login-card__title-brand {
+  color: #111827;
+}
+
+.login-card__title-divider {
+  margin: 0 10px;
+  color: #94a3b8;
+}
+
+.login-card__title-main {
+  color: #1e293b;
+}
+
+.login-card__subtitle {
+  max-width: 280px;
+  margin: 14px auto 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.login-form .ant-form-item {
+  margin-bottom: 18px;
+}
+
+.login-form .ant-input-affix-wrapper,
+.login-form .ant-input-affix-wrapper-lg {
+  border-radius: 14px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-color: #dbe3ee;
+  box-shadow: none;
+}
+
+.login-form .ant-input-affix-wrapper:hover,
+.login-form .ant-input-affix-wrapper-focused {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+}
+
+.login-form__submit {
+  height: 48px !important;
+  margin-top: 4px;
+  border: none;
+  border-radius: 14px !important;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%) !important;
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.22);
+}
+
+.login-form__submit:hover,
+.login-form__submit:focus {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+}
+
+.query-sql-collapse .ant-collapse-header {
+  padding-inline: 0 !important;
+}
+
+.query-sql-collapse .ant-collapse-content-box {
+  padding: 12px 0 0 !important;
+}
+
+.favorites-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.favorites-page__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 4px 0;
+}
+
+.favorites-page__count-tag {
+  margin-inline-end: 0 !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  font-weight: 600;
+}
+
+.favorites-page__card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.favorites-table .ant-table {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.favorites-table .ant-table-container {
+  border-radius: 18px;
+}
+
+.favorites-table .ant-table-thead > tr > th {
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.favorites-table .ant-table-tbody > tr > td {
+  padding-top: 18px;
+  padding-bottom: 18px;
+  vertical-align: middle;
+}
+
+.favorites-table .ant-table-tbody > tr:hover > td {
+  background: rgba(239, 246, 255, 0.42) !important;
+}
+
+.favorites-table__action-column {
+  white-space: normal !important;
+}
+
+.favorites-table__actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.favorites-table__action-button {
+  padding-inline: 8px !important;
+  border-radius: 10px !important;
+}
+
+.favorites-table__action-button--primary {
+  font-weight: 600;
+}
+
+/* Ant Design 5.29.3 pagination layout hook: keep footer controls wrapped on narrow screens. */
+.data-table__compact-pagination .ant-table-pagination {
+  row-gap: 12px;
+}
+
+.data-table__compact-pagination .ant-pagination {
+  flex-wrap: wrap;
+  gap: 8px 4px;
+}
+
+@media (max-width: 960px) {
+  .favorites-page__hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .favorites-page__card .ant-card-body {
+    padding: 16px !important;
+  }
+}
+
+.sql-preview-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.sql-code-block {
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f8fafc;
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.sql-code-block__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.96));
+}
+
+.sql-code-block__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sql-code-block__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sql-code-block__line-count {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sql-code-block__copy {
+  color: #334155 !important;
+  font-weight: 500;
+}
+
+.sql-code-block__copy:hover,
+.sql-code-block__copy:focus {
+  color: #1d4ed8 !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+.sql-code-block__body {
+  overflow: auto;
+  background:
+    linear-gradient(90deg, rgba(226, 232, 240, 0.4) 0, rgba(226, 232, 240, 0.4) 44px, transparent 44px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.95));
+}
+
+.sql-code-block__pre,
+.sql-code-tooltip__pre {
+  margin: 0;
+  font-family:
+    'SFMono-Regular',
+    'SF Mono',
+    'JetBrains Mono',
+    'Fira Code',
+    Consolas,
+    'Liberation Mono',
+    monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sql-code-block__pre {
+  min-width: max-content;
+  padding: 16px 18px 16px 60px;
+  color: #334155;
+  tab-size: 2;
+}
+
+.sql-code-tooltip .ant-tooltip-inner {
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 0;
+  background: #0f172a;
+}
+
+.sql-code-tooltip__content {
+  max-height: 280px;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.sql-code-tooltip__pre {
+  color: #dbeafe;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.sql-inline-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 576px) {
+  .login-page {
+    padding: 20px 16px;
+  }
+
+  .login-card .ant-card-body {
+    padding: 28px 22px !important;
+  }
+
+  .login-card__brand-badge {
+    margin-bottom: 14px;
+  }
+
+  .login-card__title-divider {
+    display: none;
+  }
+
+  .login-card__title-brand,
+  .login-card__title-main {
+    display: block;
+  }
+
+  .login-card__subtitle {
+    max-width: 100%;
+  }
+}
+
+.brand-mark {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #1f2937;
+  transition: gap 0.2s ease, justify-content 0.2s ease;
+}
+
+.brand-mark-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #1677ff;
+  background: linear-gradient(145deg, #eef6ff, #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.16);
+  font-size: 17px;
+  line-height: 1;
+  transform: scale(1);
+  transition:
+    width 0.2s ease,
+    height 0.2s ease,
+    flex-basis 0.2s ease,
+    border-radius 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.brand-mark-icon svg {
+  display: block;
+}
+
+.brand-mark-title {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    max-width 0.22s ease,
+    opacity 0.16s ease,
+    transform 0.2s ease;
+}
+
+.brand-mark-collapsed {
+  justify-content: center;
+  gap: 0;
+}
+
+.brand-mark-collapsed .brand-mark-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 10px;
+  transform: scale(0.96);
+}
+
+.brand-mark-collapsed .brand-mark-title {
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+}
+
+.brand-mark-light .brand-mark-title {
+  max-width: 144px;
+}
+
+.brand-mark-dark {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.brand-mark-dark .brand-mark-icon {
+  color: #9fd5ff;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.brand-mark-dark .brand-mark-title {
+  max-width: 144px;
+}

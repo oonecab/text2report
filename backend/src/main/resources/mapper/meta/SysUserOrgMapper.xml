@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.meta.mapper.SysUserOrgMapper">
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.meta.entity.SysUserOrg">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="org_id" property="orgId"/>
+        <result column="scope" property="scope"/>
+        <result column="is_primary" property="isPrimary"/>
+        <result column="granted_by" property="grantedBy"/>
+        <result column="granted_at" property="grantedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, org_id, scope, is_primary, granted_by, granted_at
+        FROM sys_user_org
+        WHERE user_id = #{userId}
+        ORDER BY is_primary DESC, granted_at DESC
+    </select>
+
+    <select id="selectByOrgId" resultMap="BaseResultMap">
+        SELECT id, user_id, org_id, scope, is_primary, granted_by, granted_at
+        FROM sys_user_org
+        WHERE org_id = #{orgId}
+        ORDER BY granted_at DESC
+    </select>
+
+    <select id="selectPrimaryOrg" resultMap="BaseResultMap">
+        SELECT id, user_id, org_id, scope, is_primary, granted_by, granted_at
+        FROM sys_user_org
+        WHERE user_id = #{userId}
+          AND is_primary = TRUE
+        LIMIT 1
+    </select>
+
+    <delete id="deleteByUserAndOrg">
+        DELETE FROM sys_user_org
+        WHERE user_id = #{userId}
+          AND org_id = #{orgId}
+    </delete>
+</mapper>

@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.meta.mapper.AuditQueryLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.meta.entity.AuditQueryLog">
+        <id column="id" property="id"/>
+        <result column="request_id" property="requestId"/>
+        <result column="user_id" property="userId"/>
+        <result column="org_id" property="orgId"/>
+        <result column="question" property="question"/>
+        <result column="prompt_context" property="promptContext"/>
+        <result column="sql" property="sql"/>
+        <result column="summary" property="summary"/>
+        <result column="recommended_chart" property="recommendedChart"/>
+        <result column="status" property="status"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="execution_time_ms" property="executionTimeMs"/>
+        <result column="rows_returned" property="rowsReturned"/>
+        <result column="confidence" property="confidence"/>
+        <result column="feedback" property="feedback"/>
+        <result column="feedback_rating" property="feedbackRating"/>
+        <result column="feedback_comment" property="feedbackComment"/>
+        <result column="feedback_at" property="feedbackAt"/>
+        <result column="cache_hit" property="cacheHit"/>
+        <result column="is_favorite" property="isFavorite"/>
+        <result column="favorite_at" property="favoriteAt"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- Upsert for AuditQueryLog - Fix: P0-2竞态消除, use upsert instead of select+update -->
+    <insert id="upsert">
+        INSERT INTO audit_query_logs (
+            request_id, user_id, org_id, question, prompt_context, sql, summary, recommended_chart, status,
+            error_message, execution_time_ms, rows_returned, confidence,
+            feedback, feedback_rating, feedback_comment, feedback_at, cache_hit,
+            is_favorite, favorite_at, retry_count, created_at, updated_at
+        ) VALUES (
+            #{requestId}, #{userId}, #{orgId}, #{question}, #{promptContext}, #{sql}, #{summary}, #{recommendedChart}, #{status},
+            #{errorMessage}, #{executionTimeMs}, #{rowsReturned}, #{confidence},
+            #{feedback}, #{feedbackRating}, #{feedbackComment}, #{feedbackAt}, #{cacheHit},
+            #{isFavorite}, #{favoriteAt}, #{retryCount}, #{createdAt}, #{updatedAt}
+        )
+        ON CONFLICT (request_id) DO UPDATE SET
+            user_id = COALESCE(EXCLUDED.user_id, audit_query_logs.user_id),
+            org_id = COALESCE(EXCLUDED.org_id, audit_query_logs.org_id),
+            question = COALESCE(EXCLUDED.question, audit_query_logs.question),
+            prompt_context = COALESCE(EXCLUDED.prompt_context, audit_query_logs.prompt_context),
+            sql = COALESCE(EXCLUDED.sql, audit_query_logs.sql),
+            summary = COALESCE(EXCLUDED.summary, audit_query_logs.summary),
+            recommended_chart = COALESCE(EXCLUDED.recommended_chart, audit_query_logs.recommended_chart),
+            status = COALESCE(EXCLUDED.status, audit_query_logs.status),
+            error_message = COALESCE(EXCLUDED.error_message, audit_query_logs.error_message),
+            execution_time_ms = COALESCE(EXCLUDED.execution_time_ms, audit_query_logs.execution_time_ms),
+            rows_returned = COALESCE(EXCLUDED.rows_returned, audit_query_logs.rows_returned),
+            confidence = COALESCE(EXCLUDED.confidence, audit_query_logs.confidence),
+            feedback = COALESCE(EXCLUDED.feedback, audit_query_logs.feedback),
+            feedback_rating = COALESCE(EXCLUDED.feedback_rating, audit_query_logs.feedback_rating),
+            feedback_comment = COALESCE(EXCLUDED.feedback_comment, audit_query_logs.feedback_comment),
+            feedback_at = COALESCE(EXCLUDED.feedback_at, audit_query_logs.feedback_at),
+            cache_hit = COALESCE(EXCLUDED.cache_hit, audit_query_logs.cache_hit),
+            is_favorite = COALESCE(EXCLUDED.is_favorite, audit_query_logs.is_favorite),
+            favorite_at = COALESCE(EXCLUDED.favorite_at, audit_query_logs.favorite_at),
+            retry_count = COALESCE(EXCLUDED.retry_count, audit_query_logs.retry_count),
+            updated_at = NOW()
+    </insert>
+
+    <update id="updateLlmAudit">
+        UPDATE audit_query_logs
+        SET
+            llm_provider_id = #{llmProviderId},
+            llm_provider_key = #{llmProviderKey},
+            llm_vendor_type = #{llmVendorType},
+            llm_model_code = #{llmModelCode},
+            llm_routing_version = #{llmRoutingVersion},
+            updated_at = NOW()
+        WHERE request_id = #{requestId}
+    </update>
+
+    <select id="selectHistory" resultType="com.text2report.model.dto.HistoryItem">
+        SELECT
+            a.request_id AS request_id,
+            a.user_id AS user_id,
+            u.username AS username,
+            u.display_name AS display_name,
+            a.question AS question,
+            a.sql AS sql,
+            a.summary AS summary,
+            a.confidence AS confidence,
+            a.rows_returned AS row_count,
+            a.execution_time_ms AS execution_ms,
+            a.status AS status,
+            a.recommended_chart AS recommended_chart,
+            a.created_at AS created_at,
+            a.org_id AS org_id,
+            o.org_name AS org_name,
+            a.is_favorite AS is_favorite,
+            a.retry_count AS retry_count,
+            a.feedback AS feedback
+        FROM audit_query_logs a
+        LEFT JOIN dim_org o ON a.org_id = o.id
+        LEFT JOIN sys_user u ON a.user_id = u.id
+        <where>
+            <if test="userId != null">AND a.user_id = #{userId}</if>
+            <if test="orgIds != null">
+                AND a.org_id IN
+                <foreach collection="orgIds" item="orgId" open="(" separator="," close=")">
+                    #{orgId}
+                </foreach>
+            </if>
+            <if test="username != null and username != ''">
+                AND (u.username ILIKE '%' || #{username} || '%' OR u.display_name ILIKE '%' || #{username} || '%')
+            </if>
+            <if test="keyword != null and keyword != ''">AND a.question ILIKE '%' || #{keyword} || '%'</if>
+            <if test="startDate != null">AND a.created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="endDate != null">AND a.created_at <![CDATA[<]]> #{endDate}</if>
+            <if test="minConfidence != null">AND a.confidence <![CDATA[>=]]> #{minConfidence}</if>
+            <if test="maxConfidence != null">AND a.confidence <![CDATA[<=]]> #{maxConfidence}</if>
+        </where>
+        ORDER BY a.created_at DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM audit_query_logs a
+        LEFT JOIN sys_user u ON a.user_id = u.id
+        <where>
+            <if test="userId != null">AND a.user_id = #{userId}</if>
+            <if test="orgIds != null">
+                AND a.org_id IN
+                <foreach collection="orgIds" item="orgId" open="(" separator="," close=")">
+                    #{orgId}
+                </foreach>
+            </if>
+            <if test="username != null and username != ''">
+                AND (u.username ILIKE '%' || #{username} || '%' OR u.display_name ILIKE '%' || #{username} || '%')
+            </if>
+            <if test="keyword != null and keyword != ''">AND a.question ILIKE '%' || #{keyword} || '%'</if>
+            <if test="startDate != null">AND a.created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="endDate != null">AND a.created_at <![CDATA[<]]> #{endDate}</if>
+            <if test="minConfidence != null">AND a.confidence <![CDATA[>=]]> #{minConfidence}</if>
+            <if test="maxConfidence != null">AND a.confidence <![CDATA[<=]]> #{maxConfidence}</if>
+        </where>
+    </select>
+
+    <select id="selectFavorites" resultType="com.text2report.model.dto.FavoriteItem">
+        SELECT
+            a.request_id AS request_id,
+            a.question AS question,
+            a.org_id AS org_id,
+            o.org_name AS org_name,
+            a.recommended_chart AS recommended_chart,
+            a.rows_returned AS row_count,
+            a.favorite_at AS favorited_at,
+            a.created_at AS last_run_at
+        FROM audit_query_logs a
+        LEFT JOIN dim_org o ON a.org_id = o.id
+        WHERE a.user_id = #{userId}
+          AND a.is_favorite = true
+        ORDER BY a.favorite_at DESC NULLS LAST, a.created_at DESC
+    </select>
+
+    <select id="selectAuditLogs" resultType="com.text2report.model.dto.AuditLogRecord">
+        SELECT
+            a.request_id AS request_id,
+            a.user_id AS user_id,
+            a.org_id AS org_id,
+            o.org_name AS org_name,
+            a.question AS question,
+            a.sql AS generated_sql,
+            a.prompt_context AS prompt_context,
+            a.status AS status,
+            a.execution_time_ms AS execution_ms,
+            a.rows_returned AS row_count,
+            a.confidence AS confidence,
+            a.retry_count AS retry_count,
+            a.cache_hit AS cache_hit,
+            a.feedback_rating AS feedback_rating,
+            a.created_at AS created_at,
+            a.error_message AS error_message
+        FROM audit_query_logs a
+        LEFT JOIN dim_org o ON a.org_id = o.id
+        <where>
+            <if test="userId != null">AND a.user_id = #{userId}</if>
+            <if test="orgId != null">AND a.org_id = #{orgId}</if>
+            <if test="allowedOrgIds != null">
+                AND a.org_id IN
+                <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                    #{allowedOrgId}
+                </foreach>
+            </if>
+            <if test="status != null and status != ''">
+                <choose>
+                    <when test="status == 'failed'">AND a.status IN ('error', 'blocked')</when>
+                    <when test="status == 'low_confidence'">AND a.status = 'success' AND COALESCE(a.confidence, 0) &lt; 0.7</when>
+                    <otherwise>AND a.status = #{status}</otherwise>
+                </choose>
+            </if>
+            <if test="startDate != null">AND a.created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="endDate != null">AND a.created_at <![CDATA[<]]> #{endDate}</if>
+            <if test="minConfidence != null">AND a.confidence <![CDATA[>=]]> #{minConfidence}</if>
+            <if test="maxConfidence != null">AND a.confidence <![CDATA[<=]]> #{maxConfidence}</if>
+        </where>
+        ORDER BY a.created_at DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countAuditLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM audit_query_logs a
+        <where>
+            <if test="userId != null">AND a.user_id = #{userId}</if>
+            <if test="orgId != null">AND a.org_id = #{orgId}</if>
+            <if test="allowedOrgIds != null">
+                AND a.org_id IN
+                <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                    #{allowedOrgId}
+                </foreach>
+            </if>
+            <if test="status != null and status != ''">
+                <choose>
+                    <when test="status == 'failed'">AND a.status IN ('error', 'blocked')</when>
+                    <when test="status == 'low_confidence'">AND a.status = 'success' AND COALESCE(a.confidence, 0) &lt; 0.7</when>
+                    <otherwise>AND a.status = #{status}</otherwise>
+                </choose>
+            </if>
+            <if test="startDate != null">AND a.created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="endDate != null">AND a.created_at <![CDATA[<]]> #{endDate}</if>
+            <if test="minConfidence != null">AND a.confidence <![CDATA[>=]]> #{minConfidence}</if>
+            <if test="maxConfidence != null">AND a.confidence <![CDATA[<=]]> #{maxConfidence}</if>
+        </where>
+    </select>
+
+    <select id="selectAuditLogDetail" resultType="com.text2report.model.dto.AuditLogRecord">
+        SELECT
+            a.request_id AS request_id,
+            a.user_id AS user_id,
+            a.org_id AS org_id,
+            o.org_name AS org_name,
+            a.question AS question,
+            a.sql AS generated_sql,
+            a.prompt_context AS prompt_context,
+            a.status AS status,
+            a.execution_time_ms AS execution_ms,
+            a.rows_returned AS row_count,
+            a.confidence AS confidence,
+            a.retry_count AS retry_count,
+            a.cache_hit AS cache_hit,
+            a.feedback_rating AS feedback_rating,
+            a.created_at AS created_at,
+            a.error_message AS error_message
+        FROM audit_query_logs a
+        LEFT JOIN dim_org o ON a.org_id = o.id
+        WHERE a.request_id = #{requestId}
+        <if test="allowedOrgIds != null">
+            AND a.org_id IN
+            <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                #{allowedOrgId}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectAuditStats" resultType="com.text2report.model.dto.AuditStatsAggregate">
+        SELECT
+            COUNT(*) AS total_queries,
+            COUNT(*) FILTER (WHERE status = 'success') AS success_count,
+            COUNT(*) FILTER (WHERE status &lt;&gt; 'success') AS failed_count,
+            COALESCE(ROUND(AVG(execution_time_ms)), 0) AS avg_execution_ms,
+            COALESCE(AVG(confidence), 0) AS avg_confidence,
+            COUNT(*) FILTER (WHERE cache_hit = true) AS cache_hit_count
+        FROM audit_query_logs
+        <where>
+            <if test="startDate != null">created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="allowedOrgIds != null">
+                AND org_id IN
+                <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                    #{allowedOrgId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectTopUsers" resultType="com.text2report.model.dto.AuditTopUserStat">
+        SELECT
+            user_id AS user_id,
+            COUNT(*) AS count
+        FROM audit_query_logs
+        <where>
+            <if test="startDate != null">created_at <![CDATA[>=]]> #{startDate}</if>
+            AND user_id IS NOT NULL
+            <if test="allowedOrgIds != null">
+                AND org_id IN
+                <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                    #{allowedOrgId}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY user_id
+        ORDER BY count DESC, user_id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDailyTrend" resultType="com.text2report.model.dto.AuditDailyTrendStat">
+        SELECT
+            DATE(created_at) AS date,
+            COUNT(*) AS count,
+            COALESCE(ROUND(AVG(execution_time_ms)), 0) AS avg_ms
+        FROM audit_query_logs
+        <where>
+            <if test="startDate != null">created_at <![CDATA[>=]]> #{startDate}</if>
+            <if test="allowedOrgIds != null">
+                AND org_id IN
+                <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+                    #{allowedOrgId}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at) ASC
+    </select>
+
+</mapper>

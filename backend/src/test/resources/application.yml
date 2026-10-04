@@ -1,0 +1,61 @@
+# Test configuration
+spring:
+  application:
+    name: text2report-test
+
+  # H2 in-memory database for testing
+  datasource:
+    business:
+      url: jdbc:h2:mem:testdb;MODE=SQL Server;DB_CLOSE_DELAY=-1
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+    meta:
+      url: jdbc:h2:mem:testmeta;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # JPA/Hibernate auto-create for tests
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# JWT configuration
+jwt:
+  secret: test-secret-key-for-unit-tests-must-be-at-least-32-chars
+  expiration-seconds: 86400
+
+app:
+  security:
+    allow-bearer-token: false
+    auth-cookie:
+      access-cookie-name: __Host-t2r_access
+      secure: true
+      same-site: Lax
+      path: /
+  cors:
+    allowed-origins: http://localhost:5173
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: Authorization,Content-Type,X-Request-ID,X-Request-Id,X-XSRF-TOKEN
+
+# LLM configuration
+llm:
+  provider: openai
+  openai:
+    api-key: test-api-key
+    base-url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    timeout-seconds: 30
+
+# Disable security for tests
+logging:
+  level:
+    root: WARN
+    com.text2report: DEBUG

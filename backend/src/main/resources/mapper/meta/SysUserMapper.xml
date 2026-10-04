@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.meta.mapper.SysUserMapper">
+
+    <sql id="AllowedOrgIdsList">
+        <foreach collection="allowedOrgIds" item="allowedOrgId" open="(" separator="," close=")">
+            #{allowedOrgId}
+        </foreach>
+    </sql>
+
+    <sql id="UserListWhere">
+        <where>
+            <if test="role != null and role != ''">
+                su.role = #{role}
+            </if>
+            <if test="isActive != null">
+                AND su.is_active = #{isActive}
+            </if>
+            <if test="orgId != null">
+                AND EXISTS (
+                    SELECT 1
+                    FROM sys_user_org suo_filter
+                    WHERE suo_filter.user_id = su.id
+                      AND suo_filter.org_id = #{orgId}
+                )
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    su.username LIKE CONCAT('%', #{keyword}, '%')
+                    OR su.display_name LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="allowedOrgIds != null">
+                <choose>
+                    <when test="allowedOrgIds.size() > 0">
+                        <!--
+                          MANAGER visibility rule:
+                          1. Only USER accounts are manageable.
+                          2. The manager cannot manage themself.
+                          3. The target user must have at least one org grant.
+                          4. Every granted scope of the target user must be fully contained inside allowedOrgIds.
+
+                          Equivalent pseudocode:
+                          for each target grant:
+                            SELF     -> grant.orgId must be in allowedOrgIds
+                            CHILDREN -> grant.orgId and each active direct child must be in allowedOrgIds
+                            ALL      -> the whole active subtree rooted at grant.orgId must be in allowedOrgIds
+
+                          We implement this as "NOT EXISTS an out-of-scope grant" so the database can reject
+                          non-manageable users before pagination.
+                        -->
+                        AND su.role = 'USER'
+                        AND su.id != #{excludeUserId}
+                        AND EXISTS (
+                            SELECT 1
+                            FROM sys_user_org suo_required
+                            WHERE suo_required.user_id = su.id
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM sys_user_org suo_scope
+                            WHERE suo_scope.user_id = su.id
+                              AND (
+                                (suo_scope.scope = 'SELF'
+                                    AND suo_scope.org_id NOT IN <include refid="AllowedOrgIdsList"/>)
+                                OR
+                                (suo_scope.scope = 'CHILDREN'
+                                    AND (
+                                        suo_scope.org_id NOT IN <include refid="AllowedOrgIdsList"/>
+                                        OR EXISTS (
+                                            SELECT 1
+                                            FROM dim_org child
+                                            WHERE child.parent_id = suo_scope.org_id
+                                              AND child.is_active = TRUE
+                                              AND child.id NOT IN <include refid="AllowedOrgIdsList"/>
+                                        )
+                                    ))
+                                OR
+                                (suo_scope.scope = 'ALL'
+                                    AND EXISTS (
+                                        WITH RECURSIVE subtree(root_id, id, parent_id) AS (
+                                            SELECT d.id AS root_id, d.id, d.parent_id
+                                            FROM dim_org d
+                                            UNION ALL
+                                            SELECT s.root_id, d2.id, d2.parent_id
+                                            FROM dim_org d2
+                                            JOIN subtree s ON d2.parent_id = s.id
+                                            WHERE d2.is_active = TRUE
+                                        )
+                                        SELECT 1
+                                        FROM subtree
+                                        WHERE root_id = suo_scope.org_id
+                                          AND id NOT IN <include refid="AllowedOrgIdsList"/>
+                                    ))
+                              )
+                        )
+                    </when>
+                    <otherwise>
+                        AND 1 = 0
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.meta.entity.SysUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password_hash" property="passwordHash"/>
+        <result column="display_name" property="displayName"/>
+        <result column="role" property="role"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="is_active" property="isActive"/>
+        <result column="last_login_at" property="lastLoginAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="updated_by" property="updatedBy"/>
+    </resultMap>
+
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT id, username, password_hash, display_name, role, email, phone, is_active,
+               last_login_at, created_at, created_by, updated_at, updated_by
+        FROM sys_user
+        WHERE username = #{username}
+    </select>
+
+    <select id="list" resultMap="BaseResultMap">
+        SELECT su.id, su.username, su.display_name, su.role, su.email, su.phone,
+               su.is_active, su.last_login_at, su.created_at, su.created_by, su.updated_at, su.updated_by
+        FROM sys_user su
+        <include refid="UserListWhere"/>
+        ORDER BY su.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_user su
+        <include refid="UserListWhere"/>
+    </select>
+
+    <update id="updateLastLoginAt">
+        UPDATE sys_user
+        SET last_login_at = #{lastLoginAt},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

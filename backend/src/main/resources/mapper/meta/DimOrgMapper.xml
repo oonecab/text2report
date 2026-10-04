@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.meta.mapper.DimOrgMapper">
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.meta.entity.DimOrg">
+        <id column="id" property="id"/>
+        <result column="org_name" property="orgName"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="org_level" property="orgLevel"/>
+        <result column="org_code" property="orgCode"/>
+        <result column="is_active" property="isActive"/>
+        <result column="synced_at" property="syncedAt"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT id, org_name, parent_id, org_level, org_code, is_active, synced_at
+        FROM dim_org
+        WHERE is_active = TRUE
+        ORDER BY org_level, id
+    </select>
+
+    <select id="selectSubtreeIds" resultType="java.lang.Integer">
+        WITH RECURSIVE subtree AS (
+            SELECT id
+            FROM dim_org
+            WHERE id = #{orgId} AND is_active = TRUE
+            UNION ALL
+            SELECT c.id
+            FROM dim_org c
+            INNER JOIN subtree p ON c.parent_id = p.id
+            WHERE c.is_active = TRUE
+        )
+        SELECT id FROM subtree
+    </select>
+
+    <select id="selectAncestorPath" resultType="java.lang.String">
+        WITH RECURSIVE ancestors AS (
+            SELECT id, org_name, parent_id, 1 AS depth
+            FROM dim_org
+            WHERE id = #{orgId}
+            UNION ALL
+            SELECT p.id, p.org_name, p.parent_id, a.depth + 1
+            FROM dim_org p
+            INNER JOIN ancestors a ON a.parent_id = p.id
+        )
+        SELECT STRING_AGG(org_name, ' > ' ORDER BY depth DESC)
+        FROM ancestors
+    </select>
+
+    <insert id="insertWithId" parameterType="com.text2report.domain.meta.entity.DimOrg">
+        INSERT INTO dim_org (id, org_name, parent_id, org_level, org_code, is_active, synced_at)
+        VALUES (#{id}, #{orgName}, #{parentId}, #{orgLevel}, #{orgCode}, #{isActive}, #{syncedAt})
+    </insert>
+
+    <update id="updateById" parameterType="com.text2report.domain.meta.entity.DimOrg">
+        UPDATE dim_org
+        SET org_name = #{orgName},
+            parent_id = #{parentId},
+            org_level = #{orgLevel},
+            org_code = #{orgCode},
+            is_active = #{isActive},
+            synced_at = #{syncedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="deactivate">
+        UPDATE dim_org
+        SET is_active = FALSE,
+            synced_at = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

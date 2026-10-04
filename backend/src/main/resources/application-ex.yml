@@ -1,0 +1,49 @@
+# External configuration template
+# Copy this file to application-ex.yml and update with actual values
+# This file should be provided by operations or environment-specific deployment
+
+spring:
+  application:
+    name: text2report
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+  datasource:
+    business:
+      jdbc-url: ${BUSINESS_DB_URL}
+      username: ${BUSINESS_DB_USER}
+      password: ${BUSINESS_DB_PASSWORD}
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+    meta:
+      jdbc-url: ${META_DB_URL}
+      username: ${META_DB_USER}
+      password: ${META_DB_PASSWORD}
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+
+llm:
+  embedding-model: ${EMBEDDING_MODEL:bge-m3}
+  embedding-dimensions: ${EMBEDDING_DIMS:1024}
+
+app:
+  async:
+    llm-thread-pool-size: ${LLM_THREAD_POOL_SIZE:4}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.text2report: ${LOG_LEVEL_APP:DEBUG}

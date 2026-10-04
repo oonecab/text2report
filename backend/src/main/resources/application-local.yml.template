@@ -1,0 +1,105 @@
+# Local development configuration template
+# Copy this file to application-local.yml and update with actual credentials
+# DO NOT commit application-local.yml to version control (it's in .gitignore)
+
+spring:
+  application:
+    name: text2report
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+  datasource:
+    business:
+      jdbc-url: jdbc:postgresql://<YOUR_DB_HOST>:5432/text2report
+      username: <YOUR_DB_USERNAME>
+      password: <YOUR_DB_PASSWORD>
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        read-only: true
+    meta:
+      jdbc-url: jdbc:postgresql://<YOUR_DB_HOST>:5432/text2report-meta
+      username: <YOUR_DB_USERNAME>
+      password: <YOUR_DB_PASSWORD>
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 1
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+    vector:
+      jdbc-url: jdbc:postgresql://<YOUR_DB_HOST>:5433/postgres
+      username: postgres
+      password: <YOUR_VECTOR_DB_PASSWORD>
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 1
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        read-only: false
+        pool-name: VectorPool
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        model: bge-m3
+
+  data:
+    redis:
+      host: <YOUR_REDIS_HOST>
+      port: <YOUR_REDIS_PORT>
+      password: <YOUR_REDIS_PASSWORD>
+      database: 0
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+jwt:
+  secret: <YOUR_JWT_SECRET_MINIMUM_32_CHARS>
+  expiration-seconds: 86400  # 24 hours
+
+llm:
+  embedding-model: bge-m3
+  embedding-dimensions: 1024
+
+app:
+  async:
+    llm-thread-pool-size: 4
+  rag:
+    similarity-threshold-example: 0.65
+    similarity-threshold-glossary: 0.60
+    similarity-threshold-table: 0.55
+    top-k-example: 5
+    top-k-glossary: 5
+    top-k-table: 3
+    fallback-to-keyword: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+logging:
+  level:
+    root: INFO
+    com.text2report: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId}] %-5level %logger{36} - %msg%n"

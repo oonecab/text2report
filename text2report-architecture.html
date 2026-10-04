@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text2Report 系统架构设计</title>
+<style>
+  :root {
+    --bg: #fafaf8; --bg2: #f0efe8; --bg3: #fff;
+    --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+    --border: #d3d1c7; --border2: #e8e7e0;
+    --teal: #0F6E56; --teal-bg: #E1F5EE; --teal-light: #5DCAA5;
+    --purple: #534AB7; --purple-bg: #EEEDFE; --purple-light: #AFA9EC;
+    --coral: #D85A30; --coral-bg: #FAECE7;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --amber: #BA7517; --amber-bg: #FAEEDA;
+    --red: #A32D2D; --red-bg: #FCEBEB;
+    --green: #3B6D11; --green-bg: #EAF3DE;
+    --gray: #5F5E5A; --gray-bg: #F1EFE8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --bg2: #2c2c2a; --bg3: #333331;
+      --text: #e8e7e0; --text2: #b4b2a9; --text3: #888780;
+      --border: #444441; --border2: #3a3a38;
+      --teal: #5DCAA5; --teal-bg: #085041;
+      --purple: #AFA9EC; --purple-bg: #26215C;
+      --coral: #F0997B; --coral-bg: #4A1B0C;
+      --blue: #85B7EB; --blue-bg: #042C53;
+      --amber: #FAC775; --amber-bg: #412402;
+      --red: #F09595; --red-bg: #501313;
+      --green: #97C459; --green-bg: #173404;
+      --gray: #B4B2A9; --gray-bg: #2C2C2A;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; padding: 32px 24px; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border2); }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 12px; }
+  p { margin-bottom: 12px; color: var(--text2); font-size: 14px; }
+  .subtitle { color: var(--text2); font-size: 15px; margin-bottom: 32px; }
+
+  .arch-diagram { background: var(--bg2); border-radius: 12px; padding: 24px; margin: 20px 0; overflow-x: auto; }
+  .layer { margin: 12px 0; border-radius: 10px; padding: 14px 16px; border: 1px solid; }
+  .layer-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .layer-boxes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .box { border-radius: 8px; padding: 10px 14px; font-size: 12px; flex: 1; min-width: 120px; }
+  .box-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .box-desc { font-size: 11px; opacity: 0.8; }
+
+  .l-teal { background: var(--teal-bg); border-color: var(--teal); }
+  .l-teal .layer-title { color: var(--teal); }
+  .b-teal { background: rgba(29,158,117,0.12); color: var(--teal); }
+
+  .l-purple { background: var(--purple-bg); border-color: var(--purple); }
+  .l-purple .layer-title { color: var(--purple); }
+  .b-purple { background: rgba(83,74,183,0.12); color: var(--purple); }
+
+  .l-coral { background: var(--coral-bg); border-color: var(--coral); }
+  .l-coral .layer-title { color: var(--coral); }
+  .b-coral { background: rgba(216,90,48,0.12); color: var(--coral); }
+
+  .l-blue { background: var(--blue-bg); border-color: var(--blue); }
+  .l-blue .layer-title { color: var(--blue); }
+  .b-blue { background: rgba(24,95,165,0.12); color: var(--blue); }
+
+  .l-amber { background: var(--amber-bg); border-color: var(--amber); }
+  .l-amber .layer-title { color: var(--amber); }
+  .b-amber { background: rgba(186,117,23,0.12); color: var(--amber); }
+
+  .l-red { background: var(--red-bg); border-color: var(--red); }
+  .l-red .layer-title { color: var(--red); }
+  .b-red { background: rgba(163,45,45,0.12); color: var(--red); }
+
+  .l-green { background: var(--green-bg); border-color: var(--green); }
+  .l-green .layer-title { color: var(--green); }
+  .b-green { background: rgba(59,109,17,0.12); color: var(--green); }
+
+  .l-gray { background: var(--gray-bg); border-color: var(--gray); }
+  .l-gray .layer-title { color: var(--gray); }
+  .b-gray { background: rgba(95,94,90,0.12); color: var(--gray); }
+
+  .arrow-down { text-align: center; color: var(--text3); font-size: 18px; margin: 4px 0; }
+
+  .tree { font-family: "SF Mono", "Cascadia Code", monospace; font-size: 13px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 16px 20px; margin: 12px 0; overflow-x: auto; white-space: pre; line-height: 1.6; color: var(--text2); }
+  .tree .dir { color: var(--blue); font-weight: 600; }
+  .tree .file { color: var(--text2); }
+  .tree .comment { color: var(--text3); font-style: italic; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th { background: var(--bg2); font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  td:first-child { font-weight: 500; white-space: nowrap; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+  .tag-teal { background: var(--teal-bg); color: var(--teal); }
+  .tag-purple { background: var(--purple-bg); color: var(--purple); }
+  .tag-coral { background: var(--coral-bg); color: var(--coral); }
+  .tag-blue { background: var(--blue-bg); color: var(--blue); }
+  .tag-amber { background: var(--amber-bg); color: var(--amber); }
+
+  .flow-container { display: flex; flex-direction: column; gap: 4px; margin: 16px 0; }
+  .flow-step { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--bg3); }
+  .flow-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .flow-content { flex: 1; }
+  .flow-label { font-weight: 600; font-size: 13px; }
+  .flow-desc { font-size: 12px; color: var(--text3); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card { border: 1px solid var(--border2); border-radius: 10px; padding: 16px; background: var(--bg3); }
+  .card-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--text2); }
+
+  .principle { display: flex; gap: 10px; padding: 12px 14px; border-left: 3px solid var(--coral); background: var(--coral-bg); border-radius: 0 8px 8px 0; margin: 8px 0; }
+  .principle-num { font-weight: 700; color: var(--coral); font-size: 14px; flex-shrink: 0; }
+  .principle-text { font-size: 13px; color: var(--text); }
+
+  code { font-family: "SF Mono", "Cascadia Code", monospace; font-size: 12px; background: var(--bg2); padding: 1px 5px; border-radius: 4px; }
+  .section-tag { display: inline-block; background: var(--purple-bg); color: var(--purple); padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Text2Report 系统架构设计文档</h1>
+<p class="subtitle">自然语言驱动的企业报表平台 — 前后端分离 · React + Ant Design · Spring Boot + 微服务</p>
+
+<!-- ===================== 1. 系统总览 ===================== -->
+<h2>一、系统总体架构</h2>
+<p>系统按照「两域分离」设计：<strong>财务人员查询域</strong>（用户端）和<strong>管理员操作域</strong>（后台管理端）共享底层微服务，通过 API Gateway 统一接入，前后端完全分离。</p>
+
+<div class="arch-diagram">
+  <div class="layer l-teal">
+    <div class="layer-title">① 前端层 — React + Ant Design（SPA）</div>
+    <div class="layer-boxes">
+      <div class="box b-teal"><div class="box-title">查询门户</div><div class="box-desc">NL 输入 · 结果表格 · 图表 · 历史</div></div>
+      <div class="box b-teal"><div class="box-title">管理后台</div><div class="box-desc">DDL 上传 · 元数据编辑 · 术语词典</div></div>
+      <div class="box b-teal"><div class="box-title">组织机构</div><div class="box-desc">树形编辑器 · 权限映射</div></div>
+      <div class="box b-teal"><div class="box-title">公共组件</div><div class="box-desc">Auth · Layout · ErrorBoundary</div></div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ HTTP REST / WebSocket</div>
+  <div class="layer l-purple">
+    <div class="layer-title">② API 网关 — Spring Cloud Gateway</div>
+    <div class="layer-boxes">
+      <div class="box b-purple"><div class="box-title">统一鉴权</div><div class="box-desc">JWT Token 校验</div></div>
+      <div class="box b-purple"><div class="box-title">路由分发</div><div class="box-desc">按路径转发到微服务</div></div>
+      <div class="box b-purple"><div class="box-title">限流熔断</div><div class="box-desc">Sentinel / Resilience4j</div></div>
+      <div class="box b-purple"><div class="box-title">日志切面</div><div class="box-desc">请求 ID 链路追踪</div></div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ 内部 HTTP / Feign</div>
+  <div class="layer l-coral">
+    <div class="layer-title">③ 微服务层 — Spring Boot 各服务独立部署</div>
+    <div class="layer-boxes">
+      <div class="box b-coral"><div class="box-title">query-service</div><div class="box-desc">查询编排核心</div></div>
+      <div class="box b-blue"><div class="box-title">metadata-service</div><div class="box-desc">DDL 解析 · 元数据 CRUD</div></div>
+      <div class="box b-amber"><div class="box-title">llm-service</div><div class="box-desc">LLM 调用抽象层</div></div>
+      <div class="box b-green"><div class="box-title">org-service</div><div class="box-desc">组织机构树管理</div></div>
+    </div>
+    <div class="layer-boxes" style="margin-top: 8px;">
+      <div class="box b-red"><div class="box-title">sql-guard-service</div><div class="box-desc">AST 安全校验</div></div>
+      <div class="box b-gray"><div class="box-title">audit-service</div><div class="box-desc">审计日志记录</div></div>
+      <div class="box b-purple"><div class="box-title">auth-service</div><div class="box-desc">用户认证 · 权限</div></div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+  <div class="layer l-gray">
+    <div class="layer-title">④ 数据层</div>
+    <div class="layer-boxes">
+      <div class="box b-coral"><div class="box-title">SQL Server</div><div class="box-desc">业务数据（只读）</div></div>
+      <div class="box b-blue"><div class="box-title">PostgreSQL</div><div class="box-desc">元数据 · 审计 · 用户</div></div>
+      <div class="box b-amber"><div class="box-title">Redis</div><div class="box-desc">缓存 · 会话 · 限流</div></div>
+      <div class="box b-green"><div class="box-title">Nacos</div><div class="box-desc">服务注册 · 配置中心</div></div>
+    </div>
+  </div>
+  <div class="arrow-down" style="margin-top: 8px;">⬇ 外部</div>
+  <div class="layer l-amber" style="max-width: 280px;">
+    <div class="layer-title">⑤ LLM 提供者</div>
+    <div class="layer-boxes">
+      <div class="box b-amber"><div class="box-title">OpenAI API</div><div class="box-desc">POC 阶段</div></div>
+      <div class="box b-amber"><div class="box-title">Local Qwen</div><div class="box-desc">生产部署</div></div>
+    </div>
+  </div>
+</div>
+
+<h3>四条不可违反原则</h3>
+<div class="principle"><div class="principle-num">1</div><div class="principle-text">LLM 只能看到元数据（表名、字段、注释、术语），绝不接触真实业务数据</div></div>
+<div class="principle"><div class="principle-num">2</div><div class="principle-text">只有查询网关（SQL Guard）可以访问 SQL Server，前端和 LLM 服务禁止直连</div></div>
+<div class="principle"><div class="principle-num">3</div><div class="principle-text">生产环境只允许只读 SQL（SELECT），通过 JSqlParser AST 解析强制校验</div></div>
+<div class="principle"><div class="principle-num">4</div><div class="principle-text">每一次请求都必须记录完整审计日志：请求 ID、用户、组织、Prompt、SQL、耗时、行数</div></div>
+
+
+<!-- ===================== 2. 前端架构 ===================== -->
+<h2>二、前端架构设计</h2>
+
+<div class="section-tag">REACT + ANT DESIGN + TYPESCRIPT</div>
+<p>前端采用 React 18 + TypeScript + Ant Design 5.x，按功能模块拆分，所有业务逻辑由后端处理，前端仅负责渲染服务端返回的结构化 JSON。</p>
+
+<h3>2.1 目录结构</h3>
+<div class="tree"><span class="dir">frontend/</span>
+├── <span class="dir">public/</span>
+├── <span class="dir">src/</span>
+│   ├── <span class="dir">app/</span>                          <span class="comment">← 应用入口 & 路由配置</span>
+│   │   ├── <span class="file">App.tsx</span>
+│   │   ├── <span class="file">routes.tsx</span>              <span class="comment">← React Router 路由表（集中管理）</span>
+│   │   └── <span class="file">AuthGuard.tsx</span>           <span class="comment">← 路由守卫（角色权限控制）</span>
+│   │
+│   ├── <span class="dir">layouts/</span>                      <span class="comment">← 布局组件</span>
+│   │   ├── <span class="file">QueryLayout.tsx</span>         <span class="comment">← 查询域布局（用户端）</span>
+│   │   └── <span class="file">AdminLayout.tsx</span>         <span class="comment">← 管理域布局（后台端）</span>
+│   │
+│   ├── <span class="dir">pages/</span>                        <span class="comment">← 页面级组件（按域拆分）</span>
+│   │   ├── <span class="dir">query/</span>                   <span class="comment">← 查询域（财务人员）</span>
+│   │   │   ├── <span class="file">QueryPage.tsx</span>       <span class="comment">← 主查询页面</span>
+│   │   │   ├── <span class="file">HistoryPage.tsx</span>     <span class="comment">← 查询历史</span>
+│   │   │   └── <span class="file">FavoritesPage.tsx</span>   <span class="comment">← 收藏查询</span>
+│   │   │
+│   │   └── <span class="dir">admin/</span>                   <span class="comment">← 管理域（管理员）</span>
+│   │       ├── <span class="file">DDLUploadPage.tsx</span>   <span class="comment">← DDL 上传解析</span>
+│   │       ├── <span class="file">TableListPage.tsx</span>   <span class="comment">← 表 & 字段管理</span>
+│   │       ├── <span class="file">GlossaryPage.tsx</span>    <span class="comment">← 术语词典管理</span>
+│   │       ├── <span class="file">OrgTreePage.tsx</span>     <span class="comment">← 组织机构管理</span>
+│   │       ├── <span class="file">ExamplesPage.tsx</span>    <span class="comment">← 问答示例对管理</span>
+│   │       ├── <span class="file">JoinEdgePage.tsx</span>    <span class="comment">← JOIN 关系管理</span>
+│   │       └── <span class="file">AuditLogPage.tsx</span>    <span class="comment">← 审计日志查看</span>
+│   │
+│   ├── <span class="dir">components/</span>                   <span class="comment">← 可复用 UI 组件</span>
+│   │   ├── <span class="dir">query/</span>
+│   │   │   ├── <span class="file">QueryInput.tsx</span>      <span class="comment">← NL 输入框 + 组织选择器</span>
+│   │   │   ├── <span class="file">ResultTable.tsx</span>     <span class="comment">← 数据表格（分页/排序/筛选）</span>
+│   │   │   ├── <span class="file">ResultChart.tsx</span>     <span class="comment">← 图表渲染（ECharts）</span>
+│   │   │   ├── <span class="file">QuerySummary.tsx</span>    <span class="comment">← 结果摘要文本</span>
+│   │   │   ├── <span class="file">SqlPreview.tsx</span>      <span class="comment">← SQL 预览（管理员可见）</span>
+│   │   │   └── <span class="file">ConfidenceBadge.tsx</span> <span class="comment">← 置信度标签</span>
+│   │   ├── <span class="dir">admin/</span>
+│   │   │   ├── <span class="file">DDLEditor.tsx</span>       <span class="comment">← DDL 文本编辑器</span>
+│   │   │   ├── <span class="file">ColumnEditor.tsx</span>    <span class="comment">← 字段注释可编辑表格</span>
+│   │   │   ├── <span class="file">OrgTreeEditor.tsx</span>   <span class="comment">← 树形组织编辑器</span>
+│   │   │   └── <span class="file">GlossaryForm.tsx</span>    <span class="comment">← 术语编辑表单</span>
+│   │   └── <span class="dir">common/</span>
+│   │       ├── <span class="file">OrgSelector.tsx</span>     <span class="comment">← 组织范围选择器</span>
+│   │       ├── <span class="file">LoadingSkeleton.tsx</span>
+│   │       └── <span class="file">ErrorFallback.tsx</span>
+│   │
+│   ├── <span class="dir">hooks/</span>                        <span class="comment">← 自定义 Hooks</span>
+│   │   ├── <span class="file">useQuery.ts</span>             <span class="comment">← 查询请求封装</span>
+│   │   ├── <span class="file">useOrgContext.ts</span>        <span class="comment">← 当前组织上下文</span>
+│   │   ├── <span class="file">useAuth.ts</span>              <span class="comment">← 认证状态</span>
+│   │   └── <span class="file">useWebSocket.ts</span>         <span class="comment">← 流式响应（可选）</span>
+│   │
+│   ├── <span class="dir">services/</span>                     <span class="comment">← API 调用层（axios 封装）</span>
+│   │   ├── <span class="file">request.ts</span>              <span class="comment">← axios 实例（拦截器/Token）</span>
+│   │   ├── <span class="file">queryApi.ts</span>             <span class="comment">← 查询相关 API</span>
+│   │   ├── <span class="file">metadataApi.ts</span>          <span class="comment">← 元数据管理 API</span>
+│   │   ├── <span class="file">orgApi.ts</span>               <span class="comment">← 组织机构 API</span>
+│   │   └── <span class="file">authApi.ts</span>              <span class="comment">← 认证 API</span>
+│   │
+│   ├── <span class="dir">store/</span>                        <span class="comment">← 全局状态管理（Zustand）</span>
+│   │   ├── <span class="file">useAuthStore.ts</span>
+│   │   ├── <span class="file">useOrgStore.ts</span>
+│   │   └── <span class="file">useQueryStore.ts</span>
+│   │
+│   ├── <span class="dir">types/</span>                        <span class="comment">← TypeScript 类型定义</span>
+│   │   ├── <span class="file">query.d.ts</span>              <span class="comment">← QueryRequest / QueryResponse</span>
+│   │   ├── <span class="file">metadata.d.ts</span>           <span class="comment">← Table / Column / Glossary</span>
+│   │   ├── <span class="file">org.d.ts</span>                <span class="comment">← OrgNode / OrgTree</span>
+│   │   └── <span class="file">api.d.ts</span>                <span class="comment">← 通用 API 响应封装</span>
+│   │
+│   └── <span class="dir">utils/</span>
+│       ├── <span class="file">constants.ts</span>
+│       └── <span class="file">formatters.ts</span>
+│
+├── <span class="file">vite.config.ts</span>
+├── <span class="file">tsconfig.json</span>
+└── <span class="file">package.json</span></div>
+
+<h3>2.2 前端核心设计原则</h3>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">纯渲染，零业务逻辑</div>
+    <div class="card-body">前端不做任何 SQL 拼接、指标计算或数据转换。所有业务逻辑由后端处理，前端只渲染 <code>QueryResponse</code> 中的结构化 JSON。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">按域拆分路由</div>
+    <div class="card-body">查询域 <code>/query/*</code> 和管理域 <code>/admin/*</code> 使用不同 Layout，通过 <code>AuthGuard</code> 按角色控制访问。普通用户看不到 SQL 和管理入口。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">组织上下文全局可用</div>
+    <div class="card-body">通过 <code>useOrgStore</code> 管理当前选中的组织节点，所有查询请求自动携带 <code>orgId</code>，组件通过 <code>OrgSelector</code> 切换范围。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">API 层统一封装</div>
+    <div class="card-body"><code>request.ts</code> 封装 axios 实例，自动附加 JWT Token、处理 401 跳转、统一错误提示、注入 <code>requestId</code> 用于链路追踪。</div>
+  </div>
+</div>
+
+<h3>2.3 前端关键页面说明</h3>
+<table>
+  <tr><th>页面</th><th>域</th><th>核心功能</th><th>关键组件</th></tr>
+  <tr><td><code>QueryPage</code></td><td><span class="tag tag-teal">查询</span></td><td>自然语言输入 → 结果展示</td><td>QueryInput, ResultTable, ResultChart, QuerySummary</td></tr>
+  <tr><td><code>HistoryPage</code></td><td><span class="tag tag-teal">查询</span></td><td>历史查询列表，支持复用和反馈</td><td>Ant Table + 查询详情 Drawer</td></tr>
+  <tr><td><code>DDLUploadPage</code></td><td><span class="tag tag-purple">管理</span></td><td>上传 DDL → 解析预览 → 补充注释 → 确认入库</td><td>DDLEditor, ColumnEditor</td></tr>
+  <tr><td><code>TableListPage</code></td><td><span class="tag tag-purple">管理</span></td><td>已录入表的浏览和字段注释编辑</td><td>ColumnEditor（内嵌可编辑表格）</td></tr>
+  <tr><td><code>GlossaryPage</code></td><td><span class="tag tag-purple">管理</span></td><td>业务术语增删改查，含 SQL 片段和别名</td><td>GlossaryForm, Ant Table</td></tr>
+  <tr><td><code>OrgTreePage</code></td><td><span class="tag tag-purple">管理</span></td><td>可视化编辑母公司→子公司→部门树</td><td>OrgTreeEditor（Ant Tree + 编辑弹窗）</td></tr>
+  <tr><td><code>ExamplesPage</code></td><td><span class="tag tag-purple">管理</span></td><td>问答示例对管理，标注域和组织范围</td><td>Ant Table + SQL 编辑器</td></tr>
+</table>
+
+
+<!-- ===================== 3. 后端架构 ===================== -->
+<h2>三、后端微服务架构设计</h2>
+
+<div class="section-tag">SPRING BOOT + SPRING CLOUD + NACOS</div>
+<p>后端采用 Spring Boot 3.x + Spring Cloud 微服务体系，通过 Nacos 实现服务注册与配置管理，各服务独立部署、独立扩展。服务间通过 OpenFeign 进行同步调用。</p>
+
+<h3>3.1 微服务划分</h3>
+<table>
+  <tr><th>服务名</th><th>端口</th><th>职责</th><th>数据库</th></tr>
+  <tr><td><code>gateway</code></td><td>8080</td><td>API 网关：路由、鉴权、限流、链路 ID 注入</td><td>—</td></tr>
+  <tr><td><code>auth-service</code></td><td>8081</td><td>用户认证、JWT 签发、角色权限管理</td><td>PostgreSQL</td></tr>
+  <tr><td><code>query-service</code></td><td>8082</td><td>查询编排核心：组织解析 → 元数据检索 → Prompt 拼装 → LLM 调用 → SQL 校验 → 执行 → 响应组装</td><td>SQL Server (R/O), Redis</td></tr>
+  <tr><td><code>metadata-service</code></td><td>8083</td><td>DDL 解析、表/字段元数据 CRUD、术语词典、JOIN 关系、SQL 示例</td><td>PostgreSQL</td></tr>
+  <tr><td><code>llm-service</code></td><td>8084</td><td>LLM 调用抽象层（接口隔离），支持 OpenAI / Local Qwen 热切换</td><td>—</td></tr>
+  <tr><td><code>org-service</code></td><td>8085</td><td>组织机构树 CRUD、子节点递归查询</td><td>PostgreSQL</td></tr>
+  <tr><td><code>sql-guard-service</code></td><td>8086</td><td>SQL AST 解析（JSqlParser）、只读校验、TOP 注入、超时注入</td><td>—</td></tr>
+  <tr><td><code>audit-service</code></td><td>8087</td><td>审计日志异步写入、日志查询</td><td>PostgreSQL</td></tr>
+</table>
+
+<h3>3.2 后端目录结构</h3>
+<div class="tree"><span class="dir">text2report-backend/</span>
+├── <span class="dir">text2report-gateway/</span>             <span class="comment">← API 网关</span>
+│   └── <span class="dir">src/main/java/.../gateway/</span>
+│       ├── <span class="file">GatewayApplication.java</span>
+│       ├── <span class="dir">config/</span>
+│       │   ├── <span class="file">RouteConfig.java</span>          <span class="comment">← 路由规则配置</span>
+│       │   └── <span class="file">CorsConfig.java</span>
+│       └── <span class="dir">filter/</span>
+│           ├── <span class="file">AuthFilter.java</span>          <span class="comment">← JWT 校验过滤器</span>
+│           ├── <span class="file">TraceIdFilter.java</span>       <span class="comment">← 链路 ID 注入</span>
+│           └── <span class="file">RateLimitFilter.java</span>
+│
+├── <span class="dir">text2report-query/</span>               <span class="comment">← 查询编排服务（核心）</span>
+│   └── <span class="dir">src/main/java/.../query/</span>
+│       ├── <span class="file">QueryApplication.java</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">QueryController.java</span>     <span class="comment">← POST /api/v1/query</span>
+│       ├── <span class="dir">service/</span>
+│       │   ├── <span class="file">OrchestratorService.java</span> <span class="comment">← 核心编排（模板方法模式）</span>
+│       │   ├── <span class="file">PromptAssembler.java</span>     <span class="comment">← Prompt 拼装（读取模板文件）</span>
+│       │   └── <span class="file">ResponseAssembler.java</span>   <span class="comment">← 结果组装（表格+图表推荐+摘要）</span>
+│       ├── <span class="dir">client/</span>                       <span class="comment">← Feign 客户端</span>
+│       │   ├── <span class="file">MetadataClient.java</span>
+│       │   ├── <span class="file">LLMClient.java</span>
+│       │   ├── <span class="file">SqlGuardClient.java</span>
+│       │   ├── <span class="file">OrgClient.java</span>
+│       │   └── <span class="file">AuditClient.java</span>
+│       ├── <span class="dir">executor/</span>
+│       │   ├── <span class="file">QueryExecutor.java</span>       <span class="comment">← SQL Server 只读执行</span>
+│       │   └── <span class="file">QueryCache.java</span>          <span class="comment">← Redis 查询缓存</span>
+│       └── <span class="dir">model/</span>
+│           ├── <span class="file">QueryRequest.java</span>
+│           └── <span class="file">QueryResponse.java</span>
+│
+├── <span class="dir">text2report-metadata/</span>            <span class="comment">← 元数据管理服务</span>
+│   └── <span class="dir">src/main/java/.../metadata/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   ├── <span class="file">DDLController.java</span>       <span class="comment">← DDL 解析 + 确认入库</span>
+│       │   ├── <span class="file">TableController.java</span>     <span class="comment">← 表/字段 CRUD</span>
+│       │   ├── <span class="file">GlossaryController.java</span>  <span class="comment">← 术语词典 CRUD</span>
+│       │   ├── <span class="file">JoinEdgeController.java</span>  <span class="comment">← JOIN 关系 CRUD</span>
+│       │   └── <span class="file">ExampleController.java</span>   <span class="comment">← 问答示例 CRUD</span>
+│       ├── <span class="dir">service/</span>
+│       │   ├── <span class="file">DDLParserService.java</span>    <span class="comment">← DDL 解析核心（3 种注释格式）</span>
+│       │   ├── <span class="file">MetadataService.java</span>     <span class="comment">← 元数据检索（给 query-service 用）</span>
+│       │   ├── <span class="file">GlossaryService.java</span>
+│       │   └── <span class="file">MetadataRetrievalService.java</span> <span class="comment">← 根据问题关键词检索相关元数据</span>
+│       ├── <span class="dir">parser/</span>
+│       │   ├── <span class="file">InlineCommentParser.java</span>  <span class="comment">← 解析 -- 行内注释</span>
+│       │   ├── <span class="file">ExtendedPropertyParser.java</span> <span class="comment">← 解析 sp_addextendedproperty</span>
+│       │   └── <span class="file">CommentOnParser.java</span>     <span class="comment">← 解析 COMMENT ON</span>
+│       └── <span class="dir">model/</span>
+│
+├── <span class="dir">text2report-llm/</span>                 <span class="comment">← LLM 调用抽象服务</span>
+│   └── <span class="dir">src/main/java/.../llm/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">LLMController.java</span>       <span class="comment">← POST /api/v1/llm/generate</span>
+│       ├── <span class="dir">service/</span>
+│       │   ├── <span class="file">LLMService.java</span>          <span class="comment">← 接口（禁止绕过）</span>
+│       │   ├── <span class="file">OpenAILLMService.java</span>    <span class="comment">← OpenAI 实现</span>
+│       │   └── <span class="file">LocalLLMService.java</span>     <span class="comment">← 本地 Qwen 实现（预留）</span>
+│       └── <span class="dir">config/</span>
+│           └── <span class="file">LLMConfig.java</span>           <span class="comment">← 通过配置切换 provider</span>
+│
+├── <span class="dir">text2report-sqlguard/</span>            <span class="comment">← SQL 安全网关服务</span>
+│   └── <span class="dir">src/main/java/.../sqlguard/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">SqlGuardController.java</span>
+│       ├── <span class="dir">service/</span>
+│       │   ├── <span class="file">SqlValidationService.java</span>  <span class="comment">← AST 解析 + 校验</span>
+│       │   ├── <span class="file">TopInjector.java</span>          <span class="comment">← 自动注入 TOP 限制</span>
+│       │   └── <span class="file">TimeoutInjector.java</span>      <span class="comment">← 查询超时注入</span>
+│       └── <span class="dir">rule/</span>
+│           ├── <span class="file">ReadOnlyRule.java</span>         <span class="comment">← 只读校验规则</span>
+│           ├── <span class="file">BlockedKeywordRule.java</span>   <span class="comment">← 关键字黑名单</span>
+│           └── <span class="file">DialectRule.java</span>          <span class="comment">← SQL Server 方言校验</span>
+│
+├── <span class="dir">text2report-org/</span>                 <span class="comment">← 组织机构服务</span>
+│   └── <span class="dir">src/main/java/.../org/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">OrgController.java</span>
+│       └── <span class="dir">service/</span>
+│           └── <span class="file">OrgTreeService.java</span>      <span class="comment">← 树操作 + 递归子节点查询</span>
+│
+├── <span class="dir">text2report-audit/</span>               <span class="comment">← 审计服务</span>
+│   └── <span class="dir">src/main/java/.../audit/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">AuditController.java</span>
+│       ├── <span class="dir">service/</span>
+│       │   └── <span class="file">AuditService.java</span>        <span class="comment">← 异步写入（@Async）</span>
+│       └── <span class="dir">listener/</span>
+│           └── <span class="file">AuditEventListener.java</span>  <span class="comment">← 事件驱动（可选 MQ）</span>
+│
+├── <span class="dir">text2report-auth/</span>                <span class="comment">← 认证服务</span>
+│   └── <span class="dir">src/main/java/.../auth/</span>
+│       ├── <span class="dir">controller/</span>
+│       │   └── <span class="file">AuthController.java</span>
+│       └── <span class="dir">service/</span>
+│           ├── <span class="file">AuthService.java</span>
+│           └── <span class="file">JwtService.java</span>
+│
+├── <span class="dir">text2report-common/</span>              <span class="comment">← 公共模块（所有服务依赖）</span>
+│   └── <span class="dir">src/main/java/.../common/</span>
+│       ├── <span class="dir">model/</span>
+│       │   ├── <span class="file">R.java</span>                   <span class="comment">← 统一响应封装 R&lt;T&gt;</span>
+│       │   ├── <span class="file">PageResult.java</span>
+│       │   └── <span class="file">BaseEntity.java</span>
+│       ├── <span class="dir">exception/</span>
+│       │   ├── <span class="file">BizException.java</span>        <span class="comment">← 业务异常</span>
+│       │   └── <span class="file">GlobalExceptionHandler.java</span>
+│       ├── <span class="dir">config/</span>
+│       │   └── <span class="file">FeignConfig.java</span>         <span class="comment">← Feign 拦截器（传递 Token/TraceId）</span>
+│       └── <span class="dir">util/</span>
+│           ├── <span class="file">TraceContext.java</span>        <span class="comment">← 链路 ID ThreadLocal</span>
+│           └── <span class="file">JsonUtil.java</span>
+│
+├── <span class="dir">prompts/</span>                          <span class="comment">← Prompt 模板（版本管理，不写死在代码中）</span>
+│   ├── <span class="file">sql_generation_v1.txt</span>
+│   ├── <span class="file">sql_repair_v1.txt</span>
+│   └── <span class="file">result_summary_v1.txt</span>
+│
+└── <span class="file">pom.xml</span>                           <span class="comment">← Maven 父 POM（统一版本管理）</span></div>
+
+<h3>3.3 核心服务间调用关系</h3>
+<div class="arch-diagram">
+  <div style="display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; font-size: 13px;">
+    <div style="background: var(--coral-bg); color: var(--coral); padding: 8px 14px; border-radius: 8px; font-weight: 600; border: 1px solid var(--coral);">query-service</div>
+    <span style="color: var(--text3);">──调用→</span>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="background: var(--blue-bg); color: var(--blue); padding: 4px 10px; border-radius: 6px; font-size: 12px;">metadata-service</div>
+      <div style="background: var(--amber-bg); color: var(--amber); padding: 4px 10px; border-radius: 6px; font-size: 12px;">llm-service</div>
+      <div style="background: var(--red-bg); color: var(--red); padding: 4px 10px; border-radius: 6px; font-size: 12px;">sql-guard-service</div>
+      <div style="background: var(--green-bg); color: var(--green); padding: 4px 10px; border-radius: 6px; font-size: 12px;">org-service</div>
+      <div style="background: var(--gray-bg); color: var(--gray); padding: 4px 10px; border-radius: 6px; font-size: 12px;">audit-service</div>
+    </div>
+  </div>
+  <p style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--text3);">query-service 是唯一的编排者，通过 OpenFeign 客户端调用其他服务。其他服务之间不互相调用。</p>
+</div>
+
+
+<!-- ===================== 4. 查询域流程 ===================== -->
+<h2>四、查询域详细流程</h2>
+
+<div class="flow-container">
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--teal-bg); color: var(--teal);">1</div>
+    <div class="flow-content">
+      <div class="flow-label">用户输入</div>
+      <div class="flow-desc">React QueryInput 组件 → 自然语言 + 组织范围选择 → POST /api/v1/query</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--purple-bg); color: var(--purple);">2</div>
+    <div class="flow-content">
+      <div class="flow-label">网关鉴权 + 路由</div>
+      <div class="flow-desc">Gateway 验证 JWT → 注入 traceId → 转发到 query-service</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--green-bg); color: var(--green);">3</div>
+    <div class="flow-content">
+      <div class="flow-label">解析组织上下文</div>
+      <div class="flow-desc">调用 org-service → 查询 org_tree 获取该节点及所有子节点 ID 列表</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--blue-bg); color: var(--blue);">4</div>
+    <div class="flow-content">
+      <div class="flow-label">检索元数据</div>
+      <div class="flow-desc">调用 metadata-service → 根据问题关键词检索相关表/字段/术语/JOIN/示例</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--amber-bg); color: var(--amber);">5</div>
+    <div class="flow-content">
+      <div class="flow-label">拼装 Prompt + 调用 LLM</div>
+      <div class="flow-desc">PromptAssembler 读取模板文件 → 注入元数据 JSON + 组织上下文 → 调用 llm-service → 返回结构化 JSON（含 SQL）</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--red-bg); color: var(--red);">6</div>
+    <div class="flow-content">
+      <div class="flow-label">SQL 安全校验</div>
+      <div class="flow-desc">调用 sql-guard-service → JSqlParser AST 解析 → 只读校验 → 自动注入 TOP 1000 + 超时 → 权限范围校验（org_id IN 子句）</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--coral-bg); color: var(--coral);">7</div>
+    <div class="flow-content">
+      <div class="flow-label">执行 SQL</div>
+      <div class="flow-desc">QueryExecutor → SQL Server 只读连接池 → 分页 → Redis 缓存（相同查询复用）</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--teal-bg); color: var(--teal);">8</div>
+    <div class="flow-content">
+      <div class="flow-label">结果渲染</div>
+      <div class="flow-desc">ResponseAssembler 组装 → 表格数据 + 图表推荐 + 文字摘要 → React 前端渲染</div>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--gray-bg); color: var(--gray);">9</div>
+    <div class="flow-content">
+      <div class="flow-label">审计记录</div>
+      <div class="flow-desc">异步调用 audit-service → 记录 requestId、用户、组织、Prompt 摘要、SQL、耗时、行数、置信度</div>
+    </div>
+  </div>
+</div>
+
+<p style="font-size: 13px; margin-top: 8px;"><strong>重试机制：</strong>SQL 执行或校验失败时（字段不存在、方言错误等），OrchestratorService 最多重试 2 次，每次将错误信息追加到 Prompt 中让 LLM 修复 SQL。权限拒绝或策略拒绝不重试。</p>
+
+
+<!-- ===================== 5. 管理域架构 ===================== -->
+<h2>五、管理域详细架构</h2>
+
+<div class="arch-diagram">
+  <div class="layer l-teal">
+    <div class="layer-title">管理后台前端 — /admin/* 路由</div>
+    <div class="layer-boxes">
+      <div class="box b-teal"><div class="box-title">组织架构配置</div><div class="box-desc">可视化树形编辑</div></div>
+      <div class="box b-teal"><div class="box-title">表结构上传</div><div class="box-desc">DDL 解析 + 补注释</div></div>
+      <div class="box b-teal"><div class="box-title">术语词典管理</div><div class="box-desc">术语 → SQL 片段</div></div>
+      <div class="box b-teal"><div class="box-title">示例对管理</div><div class="box-desc">问题 → 标准 SQL</div></div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ REST API</div>
+  <div class="layer l-blue">
+    <div class="layer-title">后端服务层</div>
+    <div class="layer-boxes">
+      <div class="box b-green"><div class="box-title">OrgService</div><div class="box-desc">增删改 org_tree</div></div>
+      <div class="box b-blue"><div class="box-title">DDLParserService</div><div class="box-desc">解析 → 预览 → 入库</div></div>
+      <div class="box b-blue"><div class="box-title">MetadataService</div><div class="box-desc">词典 / 示例 CRUD</div></div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+  <div class="layer l-gray">
+    <div class="layer-title">PostgreSQL 元数据库</div>
+    <div class="layer-boxes">
+      <div class="box b-gray"><div class="box-title">org_tree</div><div class="box-desc">组织层级</div></div>
+      <div class="box b-gray"><div class="box-title">meta_tables / columns</div><div class="box-desc">表字段元数据</div></div>
+      <div class="box b-gray"><div class="box-title">meta_glossary</div><div class="box-desc">术语词典</div></div>
+      <div class="box b-gray"><div class="box-title">meta_sql_examples</div><div class="box-desc">问答示例对</div></div>
+    </div>
+    <div class="layer-boxes" style="margin-top: 8px;">
+      <div class="box b-gray"><div class="box-title">meta_join_edges</div><div class="box-desc">JOIN 关系图</div></div>
+      <div class="box b-gray"><div class="box-title">meta_datasource</div><div class="box-desc">数据源注册</div></div>
+      <div class="box b-gray"><div class="box-title">meta_ddl_uploads</div><div class="box-desc">上传审计记录</div></div>
+    </div>
+  </div>
+</div>
+
+<h3>DDL 上传解析流水线</h3>
+<div class="flow-container">
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--blue-bg); color: var(--blue);">1</div>
+    <div class="flow-content"><div class="flow-label">上传 DDL</div><div class="flow-desc">管理员在前端粘贴或上传 DDL 文件</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--blue-bg); color: var(--blue);">2</div>
+    <div class="flow-content"><div class="flow-label">解析预览</div><div class="flow-desc">后端解析 DDL（支持 3 种注释格式：行内注释、sp_addextendedproperty、COMMENT ON）→ 返回预览 JSON，不写库</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--blue-bg); color: var(--blue);">3</div>
+    <div class="flow-content"><div class="flow-label">人工补注释</div><div class="flow-desc">前端展示可编辑表格 → 已有注释标记为 "DDL"，无注释字段标记为 "待补充" → 管理员逐行填写</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--blue-bg); color: var(--blue);">4</div>
+    <div class="flow-content"><div class="flow-label">确认入库</div><div class="flow-desc">管理员确认 → 写入 meta_tables + meta_columns → 记录 comment_source（ddl / manual）</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--gray-bg); color: var(--gray);">5</div>
+    <div class="flow-content"><div class="flow-label">审计记录</div><div class="flow-desc">写入 meta_ddl_uploads 表（原始 DDL、解析结果、上传人、时间、状态）</div></div>
+  </div>
+</div>
+
+
+<!-- ===================== 6. 关键接口设计 ===================== -->
+<h2>六、关键 API 接口设计</h2>
+
+<h3>查询域 API</h3>
+<table>
+  <tr><th>Method</th><th>Path</th><th>说明</th><th>服务</th></tr>
+  <tr><td><code>POST</code></td><td><code>/api/v1/query</code></td><td>提交自然语言查询</td><td>query-service</td></tr>
+  <tr><td><code>GET</code></td><td><code>/api/v1/query/history</code></td><td>查询历史列表</td><td>query-service</td></tr>
+  <tr><td><code>POST</code></td><td><code>/api/v1/query/{id}/feedback</code></td><td>提交查询反馈</td><td>audit-service</td></tr>
+</table>
+
+<h3>元数据管理 API</h3>
+<table>
+  <tr><th>Method</th><th>Path</th><th>说明</th><th>服务</th></tr>
+  <tr><td><code>POST</code></td><td><code>/api/v1/metadata/ddl/parse</code></td><td>解析 DDL 返回预览</td><td>metadata-service</td></tr>
+  <tr><td><code>POST</code></td><td><code>/api/v1/metadata/ddl/confirm</code></td><td>确认写入元数据表</td><td>metadata-service</td></tr>
+  <tr><td><code>GET</code></td><td><code>/api/v1/metadata/tables</code></td><td>查询已录入表列表</td><td>metadata-service</td></tr>
+  <tr><td><code>PUT</code></td><td><code>/api/v1/metadata/columns/{id}</code></td><td>修改字段注释</td><td>metadata-service</td></tr>
+  <tr><td><code>GET/POST</code></td><td><code>/api/v1/metadata/glossary</code></td><td>术语词典 CRUD</td><td>metadata-service</td></tr>
+  <tr><td><code>GET/POST</code></td><td><code>/api/v1/metadata/joins</code></td><td>JOIN 关系 CRUD</td><td>metadata-service</td></tr>
+  <tr><td><code>GET/POST</code></td><td><code>/api/v1/metadata/examples</code></td><td>示例对 CRUD</td><td>metadata-service</td></tr>
+</table>
+
+<h3>组织机构 API</h3>
+<table>
+  <tr><th>Method</th><th>Path</th><th>说明</th><th>服务</th></tr>
+  <tr><td><code>GET</code></td><td><code>/api/v1/org/tree</code></td><td>查询完整组织树</td><td>org-service</td></tr>
+  <tr><td><code>GET</code></td><td><code>/api/v1/org/{id}/children</code></td><td>查询子节点 ID 列表</td><td>org-service</td></tr>
+  <tr><td><code>POST/PUT/DELETE</code></td><td><code>/api/v1/org</code></td><td>组织节点 CRUD</td><td>org-service</td></tr>
+</table>
+
+<h3>内部服务间 API（不暴露给前端）</h3>
+<table>
+  <tr><th>Method</th><th>Path</th><th>说明</th><th>调用方</th></tr>
+  <tr><td><code>POST</code></td><td><code>/internal/llm/generate</code></td><td>LLM SQL 生成</td><td>query-service</td></tr>
+  <tr><td><code>POST</code></td><td><code>/internal/sqlguard/validate</code></td><td>SQL 安全校验</td><td>query-service</td></tr>
+  <tr><td><code>POST</code></td><td><code>/internal/metadata/retrieve</code></td><td>按问题检索相关元数据</td><td>query-service</td></tr>
+  <tr><td><code>POST</code></td><td><code>/internal/audit/log</code></td><td>写入审计日志</td><td>query-service</td></tr>
+</table>
+
+
+<!-- ===================== 7. 技术选型 ===================== -->
+<h2>七、技术选型汇总</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">前端技术栈</div>
+    <div class="card-body">
+      React 18 + TypeScript<br>
+      Ant Design 5.x<br>
+      Vite (构建工具)<br>
+      React Router 6 (路由)<br>
+      Zustand (状态管理)<br>
+      Axios (HTTP 客户端)<br>
+      ECharts / AntV (图表)<br>
+      Monaco Editor (SQL 预览)
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">后端技术栈</div>
+    <div class="card-body">
+      Java 17 + Spring Boot 3.x<br>
+      Spring Cloud 2023.x<br>
+      Spring Cloud Gateway<br>
+      Nacos (注册中心 + 配置)<br>
+      OpenFeign (服务间调用)<br>
+      MyBatis-Plus (ORM)<br>
+      JSqlParser (SQL AST)<br>
+      Spring Security + JWT
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">数据 & 中间件</div>
+    <div class="card-body">
+      SQL Server (业务数据，只读)<br>
+      PostgreSQL (元数据/审计/用户)<br>
+      Redis (缓存/会话/限流)<br>
+      Nacos (配置中心)<br>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">LLM & AI</div>
+    <div class="card-body">
+      POC: OpenAI API (GPT-4o)<br>
+      生产: Local Qwen2.5-Coder<br>
+      接口隔离，配置切换<br>
+      Prompt 模板版本管理
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== 8. 扩展性设计 ===================== -->
+<h2>八、灵活性与扩展性设计</h2>
+
+<h3>8.1 后期功能扩展点</h3>
+<table>
+  <tr><th>扩展方向</th><th>设计预留</th><th>所需改动</th></tr>
+  <tr><td>新增数据源类型（MySQL / PG）</td><td><code>meta_datasource</code> 表已预留 <code>db_type</code> 字段；QueryExecutor 可按数据源类型切换连接池</td><td>新增 Executor 实现类 + 方言规则</td></tr>
+  <tr><td>新增业务域（应收账款、库存等）</td><td>元数据表不绑定特定业务域；术语和示例都有 <code>domain</code> 字段</td><td>新增元数据 + Prompt 模板</td></tr>
+  <tr><td>向量检索（pgvector）</td><td>metadata-service 中 <code>MetadataRetrievalService</code> 可替换检索策略</td><td>添加 Embedding 生成 + 向量索引</td></tr>
+  <tr><td>报表导出（Excel / PDF）</td><td>ResponseAssembler 返回结构化数据，导出只需新增渲染器</td><td>新增 ExportService</td></tr>
+  <tr><td>多轮对话</td><td>QueryRequest 已预留 <code>sessionId</code> 和 <code>context</code> 字段</td><td>OrchestratorService 增加上下文管理</td></tr>
+  <tr><td>切换本地 LLM</td><td>LLMService 接口隔离，<code>LocalLLMService</code> 已预留</td><td>实现类 + 修改 Nacos 配置</td></tr>
+  <tr><td>细粒度权限（行列级）</td><td>SQL Guard 校验链可追加权限规则</td><td>新增 PermissionRule + 权限配置表</td></tr>
+</table>
+
+<h3>8.2 关键设计模式</h3>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">策略模式 — LLM 提供者</div>
+    <div class="card-body"><code>LLMService</code> 接口 + 多个实现类（OpenAI / Qwen / 未来其他模型），通过 Nacos 配置 <code>llm.provider</code> 热切换，零代码改动。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">责任链模式 — SQL 校验</div>
+    <div class="card-body">SqlGuardService 内部维护校验规则链：ReadOnlyRule → BlockedKeywordRule → DialectRule → TopInjector → TimeoutInjector。新增规则只需实现接口并注册。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">模板方法 — 查询编排</div>
+    <div class="card-body">OrchestratorService 定义标准编排步骤（解析 → 检索 → 生成 → 校验 → 执行 → 组装），每步可独立测试和替换。</div>
+  </div>
+  <div class="card">
+    <div class="card-title">策略模式 — DDL 解析器</div>
+    <div class="card-body">DDLParserService 内部维护多个解析器（InlineComment / ExtendedProperty / CommentOn），按优先级依次尝试，新增注释格式只需添加解析器。</div>
+  </div>
+</div>
+
+
+<!-- ===================== 9. 实施优先级 ===================== -->
+<h2>九、实施优先级建议</h2>
+
+<div class="flow-container">
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--coral-bg); color: var(--coral);">P0</div>
+    <div class="flow-content"><div class="flow-label">基础设施搭建</div><div class="flow-desc">Maven 父 POM + common 模块 + Gateway + Nacos + PostgreSQL 建表 + org_tree 种子数据</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--coral-bg); color: var(--coral);">P1</div>
+    <div class="flow-content"><div class="flow-label">管理域核心</div><div class="flow-desc">metadata-service（DDL 解析 + 元数据 CRUD）+ org-service + 前端管理页面</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--coral-bg); color: var(--coral);">P2</div>
+    <div class="flow-content"><div class="flow-label">查询域核心</div><div class="flow-desc">llm-service + sql-guard-service + query-service（OrchestratorService）+ SQL Server 连接</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--amber-bg); color: var(--amber);">P3</div>
+    <div class="flow-content"><div class="flow-label">前端查询 + 结果展示</div><div class="flow-desc">QueryPage + ResultTable + ResultChart + QuerySummary → 端到端跑通</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--amber-bg); color: var(--amber);">P4</div>
+    <div class="flow-content"><div class="flow-label">审计 + 历史</div><div class="flow-desc">audit-service + HistoryPage + 用户反馈</div></div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num" style="background: var(--green-bg); color: var(--green);">P5</div>
+    <div class="flow-content"><div class="flow-label">优化与扩展</div><div class="flow-desc">图表推荐优化 + Redis 缓存 + 报表导出 + 本地模型接入</div></div>
+  </div>
+</div>
+
+<p style="text-align: center; margin-top: 32px; color: var(--text3); font-size: 12px;">— Text2Report 架构设计 v1.0 —</p>
+
+</body>
+</html>

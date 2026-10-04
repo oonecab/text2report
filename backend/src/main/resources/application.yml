@@ -1,0 +1,190 @@
+spring:
+  application:
+    name: text2report-backend
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  codec:
+    max-in-memory-size: 1MB
+
+  datasource:
+    business:
+      jdbc-url: jdbc:postgresql://${BUSINESS_DB_HOST:localhost}:${BUSINESS_DB_PORT:5432}/${BUSINESS_DB_NAME:text2report}
+      username: ${BUSINESS_DB_USER:postgres}
+      password: ${BUSINESS_DB_PASSWORD:}
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        read-only: true
+        maximum-pool-size: 5
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: BusinessPool
+    meta:
+      jdbc-url: jdbc:postgresql://${META_DB_HOST:localhost}:${META_DB_PORT:5432}/${META_DB_NAME:text2report-meta}
+      username: ${META_DB_USER:postgres}
+      password: ${META_DB_PASSWORD:}
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        read-only: false
+        maximum-pool-size: 5
+        minimum-idle: 2
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: MetaPool
+    vector:
+      jdbc-url: ${VECTOR_DB_URL:jdbc:postgresql://localhost:5433/postgres}
+      username: ${VECTOR_DB_USER:postgres}
+      password: ${VECTOR_DB_PASSWORD}
+      driver-class-name: org.postgresql.Driver
+      connection-init-sql: SET TIME ZONE 'Asia/Shanghai'
+      hikari:
+        read-only: false
+        maximum-pool-size: 5
+        minimum-idle: 1
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        pool-name: VectorPool
+
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 2
+          max-wait: -1ms
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.text2report.domain
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+llm:
+  embedding-model: ${EMBEDDING_MODEL:bge-m3}
+  embedding-dimensions: ${EMBEDDING_DIMS:1024}
+
+sql-guard:
+  block-select-star: true
+  default-limit: 1000
+  query-timeout-seconds: 30
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+
+cache:
+  query-result-ttl: 1800
+  metadata-ttl: 1800
+  # Redis session key stores the latest login jti per user: t2r:session:{userId}
+  session-ttl: 86400
+  rate-limit-window: 60
+  rate-limit-max-requests: 20
+
+app:
+  prompt-dir: ${PROMPT_DIR:../prompts/}
+  version: ${APP_VERSION:1.0.0}
+  async:
+    llm-thread-pool-size: ${LLM_THREAD_POOL_SIZE:4}
+  security:
+    allow-bearer-token: ${ALLOW_BEARER_TOKEN:false}
+    auth-cookie:
+      access-cookie-name: ${AUTH_COOKIE_NAME:__Host-t2r_access}
+      secure: ${AUTH_COOKIE_SECURE:true}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+      path: ${AUTH_COOKIE_PATH:/}
+      domain: ${AUTH_COOKIE_DOMAIN:}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+    allowed-methods: ${CORS_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_HEADERS:Authorization,Content-Type,X-Request-ID,X-Request-Id,X-XSRF-TOKEN}
+    max-age: ${CORS_MAX_AGE:3600}
+  query:
+    max-retries: ${QUERY_MAX_RETRIES:2}
+    default-limit: ${QUERY_DEFAULT_LIMIT:1000}
+    query-timeout-seconds: ${QUERY_TIMEOUT_SECONDS:60}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    anonymous-per-minute: ${RATE_LIMIT_ANONYMOUS_PER_MINUTE:10}
+    user-per-minute: ${RATE_LIMIT_USER_PER_MINUTE:30}
+    admin-per-minute: ${RATE_LIMIT_ADMIN_PER_MINUTE:60}
+    query-per-minute: ${RATE_LIMIT_QUERY_PER_MINUTE:10}
+  rag:
+    similarity-threshold-example: ${RAG_SIMILARITY_THRESHOLD_EXAMPLE:0.65}
+    similarity-threshold-glossary: ${RAG_SIMILARITY_THRESHOLD_GLOSSARY:0.60}
+    similarity-threshold-table: ${RAG_SIMILARITY_THRESHOLD_TABLE:0.55}
+    top-k-example: ${RAG_TOP_K_EXAMPLE:5}
+    top-k-glossary: ${RAG_TOP_K_GLOSSARY:5}
+    top-k-table: ${RAG_TOP_K_TABLE:3}
+    fallback-to-keyword: ${RAG_FALLBACK_TO_KEYWORD:true}
+
+# Demo user credentials (BCrypt hashed passwords from application-local.yml, not committed to Git)
+demo:
+  users:
+    admin:
+      username: ${DEMO_ADMIN_USERNAME:admin}
+      password-hash: ${DEMO_ADMIN_PASSWORD_HASH}
+      role: ADMIN
+      org-id: 1
+    demo:
+      username: ${DEMO_USER_USERNAME:demo}
+      password-hash: ${DEMO_USER_PASSWORD_HASH}
+      role: USER
+      org-id: 2
+    user:
+      username: ${DEMO_VIEWER_USERNAME:user}
+      password-hash: ${DEMO_VIEWER_PASSWORD_HASH}
+      role: USER
+      org-id: 5
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+    include-binding-errors: always
+
+logging:
+  level:
+    root: INFO
+    com.text2report: DEBUG
+    org.springframework.security: INFO
+    org.springframework.data.redis: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

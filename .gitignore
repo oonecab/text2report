@@ -1,0 +1,102 @@
+# ============================================================
+# .gitignore — text2report 项目
+# ============================================================
+
+# ----------------------------------------------------------
+# ⚠️  敏感配置文件（绝对不能提交）
+# Fix: P1-6 - Use generalized patterns instead of specific filenames
+# ----------------------------------------------------------
+backend/src/main/resources/*-local.yml
+backend/src/main/resources/*-prod.yml
+backend/src/main/resources/env-*.yml
+docs/env-database.md
+docs/env-infrastructure.md
+docs/env-*.md
+
+# 本机工具配置和密钥文件
+.claude/settings.local.json
+.codex/config.local.toml
+.ssh/
+id_rsa
+id_ecdsa
+id_ed25519
+id_dsa
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+gitleaks-report*.json
+
+# 如果有 .env 文件
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!frontend/.env.development
+
+# ----------------------------------------------------------
+# Java / Maven
+# ----------------------------------------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+.mvn/wrapper/maven-wrapper.jar
+
+# 本机 Python 检查脚本缓存
+__pycache__/
+*.py[cod]
+
+# ----------------------------------------------------------
+# IntelliJ IDEA
+# ----------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ----------------------------------------------------------
+# VS Code
+# ----------------------------------------------------------
+.vscode/
+!.vscode/extensions.json
+
+# ----------------------------------------------------------
+# Node.js / 前端
+# ----------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production
+
+# ----------------------------------------------------------
+# 日志文件
+# ----------------------------------------------------------
+logs/
+*.log
+*.log.*
+
+# ----------------------------------------------------------
+# 操作系统
+# ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----------------------------------------------------------
+# 临时文件
+# ----------------------------------------------------------
+*.tmp
+*.bak
+*.swp
+*~

@@ -1,0 +1,4437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text2Report 系统架构文档 — 2026-05-11</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --sidebar-width: 280px;
+    --nav-bg: #1a1a2e;
+    --nav-text: #c8c8d4;
+    --nav-hover: #16213e;
+    --nav-active: #0f3460;
+    --accent: #e94560;
+    --content-bg: #fafafa;
+    --card-bg: #ffffff;
+    --border: #e8e8e8;
+    --text: #333;
+    --text-secondary: #666;
+    --code-bg: #f5f5f5;
+    --table-stripe: #f9f9f9;
+    --warning-bg: #fff2f0;
+    --warning-border: #ff4d4f;
+    --success-bg: #f6ffed;
+    --success-border: #52c41a;
+    --ascii-bg: #f0f4f8;
+    --ascii-border: #c0c8d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--content-bg); color: var(--text); line-height: 1.7;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Sidebar ── */
+  nav#sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: var(--sidebar-width); background: var(--nav-bg);
+    color: var(--nav-text); overflow-y: auto; z-index: 100;
+    padding: 20px 0; box-shadow: 2px 0 8px rgba(0,0,0,.15);
+  }
+  nav#sidebar h2 {
+    font-size: 15px; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,.1);
+    margin-bottom: 12px; color: #fff; letter-spacing: 0.5px;
+  }
+  nav#sidebar ul { list-style: none; }
+  nav#sidebar ul li a {
+    display: block; padding: 7px 20px; color: var(--nav-text);
+    font-size: 13px; transition: all .15s; border-left: 3px solid transparent;
+  }
+  nav#sidebar ul li a:hover {
+    background: var(--nav-hover); border-left-color: var(--accent); text-decoration: none; color: #fff;
+  }
+  nav#sidebar ul li a.active {
+    background: var(--nav-active); border-left-color: var(--accent); color: #fff; font-weight: 600;
+  }
+
+  /* ── Main Content ── */
+  main#content {
+    margin-left: var(--sidebar-width); padding: 40px 48px; max-width: 1120px;
+  }
+  h1 { font-size: 2em; margin-bottom: 8px; color: #1a1a2e; scroll-margin-top: 20px; }
+  h2 { font-size: 1.45em; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); color: #1a1a2e; scroll-margin-top: 20px; }
+  h3 { font-size: 1.18em; margin: 28px 0 12px; color: #333; scroll-margin-top: 20px; }
+  h4 { font-size: 1.05em; margin: 20px 0 8px; color: #555; scroll-margin-top: 20px; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 8px 0 8px 24px; }
+  li { margin: 4px 0; }
+  blockquote {
+    border-left: 4px solid var(--accent); margin: 16px 0; padding: 12px 20px;
+    background: var(--card-bg); border-radius: 0 6px 6px 0; color: var(--text-secondary);
+  }
+  blockquote p { margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { padding: 10px 14px; text-align: left; border: 1px solid var(--border); }
+  th { background: var(--nav-bg); color: #fff; font-weight: 600; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  tr:hover td { background: #e6f7ff; }
+
+  /* ── Inline Code ── */
+  :not(pre) > code {
+    background: var(--code-bg); padding: 2px 6px; border-radius: 3px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em;
+    color: #d63384; border: 1px solid #e8e8e8;
+  }
+
+  /* ── Normal Code Blocks ── */
+  pre:not(.mermaid):not(.ascii-art) {
+    background: #1e1e1e; color: #d4d4d4; padding: 16px 20px; border-radius: 6px;
+    overflow-x: auto; margin: 16px 0; font-size: 13px; line-height: 1.6;
+  }
+  pre:not(.mermaid):not(.ascii-art) code {
+    background: none; padding: 0; color: inherit; font-size: inherit; border: none;
+  }
+
+  /* ── Mermaid Diagrams ── */
+  pre.mermaid {
+    background: #fff; padding: 20px; border: 1px solid var(--border); border-radius: 8px;
+    margin: 20px 0; overflow: auto; max-height: 600px; position: relative;
+    cursor: zoom-in; transition: all 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  pre.mermaid:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+  pre.mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom overlay for mermaid */
+  .mermaid-zoom-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 9999; overflow: hidden;
+  }
+  .mermaid-zoom-overlay.active { display: flex; flex-direction: column; }
+
+  /* Zoom toolbar */
+  .zoom-toolbar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 10001; display: flex; gap: 6px; align-items: center;
+    background: rgba(26,26,46,0.92); padding: 8px 14px; border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    user-select: none; -webkit-user-select: none;
+  }
+  .zoom-toolbar button {
+    width: 34px; height: 34px; border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px; background: transparent; color: #fff; cursor: pointer;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; line-height: 1;
+  }
+  .zoom-toolbar button:hover { background: rgba(255,255,255,0.15); }
+  .zoom-toolbar button:active { background: rgba(255,255,255,0.25); }
+  .zoom-toolbar .zoom-label {
+    color: #fff; font-size: 13px; min-width: 48px; text-align: center;
+    font-variant-numeric: tabular-nums; font-family: 'SF Mono', 'Consolas', monospace;
+  }
+  .zoom-toolbar .zoom-sep {
+    width: 1px; height: 20px; background: rgba(255,255,255,0.18); margin: 0 4px;
+  }
+
+  .mermaid-zoom-overlay .zoomed-svg-container {
+    width: 100%; height: 100%; overflow: hidden;
+    cursor: grab; display: flex; align-items: center; justify-content: center;
+  }
+  .mermaid-zoom-overlay .zoomed-svg-container.grabbing { cursor: grabbing; }
+  .mermaid-zoom-overlay .zoomed-svg-container svg {
+    background: #fff; border-radius: 8px; padding: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    max-width: none; max-height: none;
+    transform-origin: 0 0;
+  }
+
+  .mermaid-zoom-hint {
+    position: absolute; top: 8px; right: 12px;
+    font-size: 11px; color: #999; pointer-events: none;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  pre.mermaid:hover .mermaid-zoom-hint { opacity: 1; }
+
+  /* ── ASCII Art Blocks ── */
+  pre.ascii-art {
+    background: var(--ascii-bg); color: #2d3748; padding: 20px 24px;
+    border: 1px solid var(--ascii-border); border-radius: 8px;
+    overflow-x: auto; margin: 16px 0; font-size: 12px; line-height: 1.45;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Menlo', 'DejaVu Sans Mono', monospace;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+    white-space: pre;
+    letter-spacing: 0;
+  }
+  pre.ascii-art code {
+    background: none; padding: 0; color: inherit; font-size: inherit; border: none;
+    font-family: inherit; white-space: pre; letter-spacing: 0;
+  }
+
+  /* ── Cards ── */
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 20px 24px; margin: 16px 0; }
+
+  /* ── Warning / Success ── */
+  .warning {
+    background: var(--warning-bg); border: 1px solid var(--warning-border);
+    border-radius: 6px; padding: 12px 16px; margin: 16px 0; font-size: 14px;
+  }
+  .success {
+    background: var(--success-bg); border: 1px solid var(--success-border);
+    border-radius: 6px; padding: 12px 16px; margin: 16px 0; font-size: 14px;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  }
+  .badge-green { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+  .badge-yellow { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+  .badge-red { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffa39e; }
+
+  /* ── Back to Top ── */
+  #back-to-top {
+    display: none; position: fixed; bottom: 32px; right: 32px; z-index: 200;
+    width: 40px; height: 40px; border-radius: 50%; background: var(--nav-bg);
+    color: #fff; border: none; cursor: pointer; font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;
+  }
+  #back-to-top:hover { background: var(--accent); transform: translateY(-2px); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    nav#sidebar { width: 100%; height: auto; position: relative; }
+    nav#sidebar ul { display: flex; flex-wrap: wrap; padding: 8px; }
+    nav#sidebar ul li a { padding: 6px 12px; font-size: 11px; border-left: none; border-bottom: 2px solid transparent; }
+    main#content { margin-left: 0; padding: 20px; }
+    pre.ascii-art { font-size: 10px; padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Navigation -->
+<nav id="sidebar">
+  <h2>Text2Report 架构文档</h2>
+  <ul>
+    <li><a href="#1-项目概述">1. 项目概述</a></li>
+    <li><a href="#2-技术栈总览">2. 技术栈总览</a></li>
+    <li><a href="#3-系统整体架构">3. 系统整体架构</a></li>
+    <li><a href="#4-前端完整架构">4. 前端完整架构</a></li>
+    <li><a href="#5-后端完整架构">5. 后端完整架构</a></li>
+    <li><a href="#6-核心查询链路完整时序">6. 核心查询链路时序</a></li>
+    <li><a href="#7-RAG向量检索架构">7. RAG 向量检索</a></li>
+    <li><a href="#8-元数据发布生命周期与SQL校验">8. 元数据发布与SQL校验</a></li>
+    <li><a href="#9-权限架构">9. 权限架构</a></li>
+    <li><a href="#10-多数据源架构">10. 多数据源架构</a></li>
+    <li><a href="#11-安全防护体系">11. 安全防护体系</a></li>
+    <li><a href="#12-元数据库Schema">12. 元数据库 Schema</a></li>
+    <li><a href="#13-API接口清单">13. API 接口清单</a></li>
+    <li><a href="#14-Prompt模板体系">14. Prompt 模板体系</a></li>
+    <li><a href="#15-反模式警示">15. 反模式警示</a></li>
+    <li><a href="#16-里程碑历史">16. 里程碑历史</a></li>
+    <li><a href="#17-技术债与待完成项">17. 技术债与待完成项</a></li>
+  </ul>
+</nav>
+
+<!-- Main Content -->
+<main id="content">
+
+<h1>Text2Report 系统架构文档</h1>
+<blockquote>
+<p>生成时间：2026-05-11 CST
+基于代码版本：master 分支（commit: fc1fb50），M11 里程碑完成 + P0 安全修复已合并 + 元数据发布生命周期 + SQL 元数据校验 + RAG 相关性评分</p>
+</blockquote>
+<hr>
+<h2 id="目录(TOC)" tabindex="-1">目录 (TOC)</h2>
+<ol>
+<li><a href="#1-%E9%A1%B9%E7%9B%AE%E6%A6%82%E8%BF%B0">项目概述</a></li>
+<li><a href="#2-%E6%8A%80%E6%9C%AF%E6%A0%88%E6%80%BB%E8%A7%88">技术栈总览</a></li>
+<li><a href="#3-%E7%B3%BB%E7%BB%9F%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84">系统整体架构</a></li>
+<li><a href="#4-%E5%89%8D%E7%AB%AF%E5%AE%8C%E6%95%B4%E6%9E%B6%E6%9E%84">前端完整架构</a></li>
+<li><a href="#5-%E5%90%8E%E7%AB%AF%E5%AE%8C%E6%95%B4%E6%9E%B6%E6%9E%84">后端完整架构</a></li>
+<li><a href="#6-%E6%A0%B8%E5%BF%83%E6%9F%A5%E8%AF%A2%E9%93%BE%E8%B7%AF%E5%AE%8C%E6%95%B4%E6%97%B6%E5%BA%8F">核心查询链路完整时序</a></li>
+<li><a href="#7-rag-%E5%90%91%E9%87%8F%E6%A3%80%E7%B4%A2%E6%9E%B6%E6%9E%84">RAG 向量检索架构</a></li>
+<li><a href="#8-%E5%85%83%E6%95%B0%E6%8D%AE%E5%8F%91%E5%B8%83%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E-sql-%E6%A0%A1%E9%AA%8C">元数据发布生命周期与 SQL 校验</a></li>
+<li><a href="#9-%E6%9D%83%E9%99%90%E6%9E%B6%E6%9E%84">权限架构</a></li>
+<li><a href="#10-%E5%A4%9A%E6%95%B0%E6%8D%AE%E6%BA%90%E6%9E%B6%E6%9E%84">多数据源架构</a></li>
+<li><a href="#11-%E5%AE%89%E5%85%A8%E9%98%B2%E6%8A%A4%E4%BD%93%E7%B3%BB">安全防护体系</a></li>
+<li><a href="#12-%E5%85%83%E6%95%B0%E6%8D%AE%E5%BA%93-schema">元数据库 Schema</a></li>
+<li><a href="#13-api-%E6%8E%A5%E5%8F%A3%E6%B8%85%E5%8D%95">API 接口清单</a></li>
+<li><a href="#14-prompt-%E6%A8%A1%E6%9D%BF%E4%BD%93%E7%B3%BB">Prompt 模板体系</a></li>
+<li><a href="#15-%E5%8F%8D%E6%A8%A1%E5%BC%8F%E8%AD%A6%E7%A4%BA">反模式警示</a></li>
+<li><a href="#16-%E9%87%8C%E7%A8%8B%E7%A2%91%E5%8E%86%E5%8F%B2">里程碑历史</a></li>
+<li><a href="#17-%E6%8A%80%E6%9C%AF%E5%80%BA%E4%B8%8E%E5%BE%85%E5%AE%8C%E6%88%90%E9%A1%B9">技术债与待完成项</a></li>
+</ol>
+<hr>
+<h2 id="1-项目概述" tabindex="-1">1. 项目概述</h2>
+<h3 id="1-1项目定位" tabindex="-1">1.1 项目定位</h3>
+<p>Text2Report 是一个<strong>企业级自然语言转报表平台</strong>（NL2SQL Enterprise Reporting Platform），其目标不是通用聊天机器人，而是将受控的业务问题转换为安全的 SQL，通过受监管的只读路径执行，并以图表、表格、摘要和可下载报表的形式呈现结果。</p>
+<h3 id="1-2四条不可违反的核心原则" tabindex="-1">1.2 四条不可违反的核心原则</h3>
+<p>本仓库必须始终保留四条不变量：</p>
+<ol>
+<li><strong>LLM sees metadata only — never real business data.</strong>
+LLM 仅能看到元数据，严禁传入真实业务数据。</li>
+<li><strong>All SQL execution must pass through <code>SqlGuardService</code> (JSqlParser AST validation). No exceptions.</strong>
+所有 SQL 执行必须通过 <code>SqlGuardService</code> 的 JSqlParser AST 校验，无一例外。</li>
+<li><strong>Only <code>SELECT</code> / <code>WITH...SELECT</code> is permitted in production. All write operations are forbidden.</strong>
+生产环境仅允许 SELECT 和 WITH…SELECT 语句，所有写操作被禁止。</li>
+<li><strong>Every request must be auditable (<code>audit_query_log</code>).</strong>
+每个请求必须可审计，写入 <code>audit_query_logs</code> 表。</li>
+</ol>
+<h3 id="1-3当前里程碑状态" tabindex="-1">1.3 当前里程碑状态</h3>
+<ul>
+<li><strong>当前里程碑</strong>：M11 完成，准备进入 M12（多模型配置架构 + 元数据驱动组织范围升级）</li>
+<li><strong>代码状态</strong>：代码完成，P0 安全修复已合并到 master，元数据发布生命周期、SQL 元数据校验、RAG 相关性评分已上线</li>
+<li><strong>测试状态</strong>：后端 30 个测试文件（覆盖 controller/service/config/domain/mapper），前端 TypeScript 编译 0 error，生产构建成功</li>
+<li><strong>验收状态</strong>：真实环境验收待执行（权限链路、RAG 检索、异步向量化、组织同步、端到端查询）</li>
+<li><strong>已知 P0 问题</strong>：0 个（P0 修复已于 2026-05-03 合并）</li>
+<li><strong>已知 P1 问题</strong>：8 个（部分已修复，持续收敛中）</li>
+</ul>
+<hr>
+<h2 id="2-技术栈总览" tabindex="-1">2. 技术栈总览</h2>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>技术</th>
+<th>版本/说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>前端框架</strong></td>
+<td>React</td>
+<td>19</td>
+</tr>
+<tr>
+<td><strong>前端语言</strong></td>
+<td>TypeScript</td>
+<td>6.0 (严格模式)</td>
+</tr>
+<tr>
+<td><strong>UI 组件库</strong></td>
+<td>Ant Design</td>
+<td>5.29.x</td>
+</tr>
+<tr>
+<td><strong>构建工具</strong></td>
+<td>Vite</td>
+<td>8.x</td>
+</tr>
+<tr>
+<td><strong>状态管理</strong></td>
+<td>Zustand</td>
+<td>5.x + persist 持久化</td>
+</tr>
+<tr>
+<td><strong>HTTP 客户端</strong></td>
+<td>Axios</td>
+<td>request.ts 封装 JWT 拦截</td>
+</tr>
+<tr>
+<td><strong>图表库</strong></td>
+<td>ECharts</td>
+<td>通过 echarts-for-react</td>
+</tr>
+<tr>
+<td><strong>Mock 服务</strong></td>
+<td>MSW (Mock Service Worker)</td>
+<td>浏览器端拦截</td>
+</tr>
+<tr>
+<td><strong>后端运行时</strong></td>
+<td>Java</td>
+<td>21</td>
+</tr>
+<tr>
+<td><strong>后端框架</strong></td>
+<td>Spring Boot</td>
+<td>3.2.x</td>
+</tr>
+<tr>
+<td><strong>ORM</strong></td>
+<td>MyBatis-Plus</td>
+<td>3.5.x</td>
+</tr>
+<tr>
+<td><strong>SQL 安全</strong></td>
+<td>JSqlParser</td>
+<td>4.x（AST 校验，强制执行）</td>
+</tr>
+<tr>
+<td><strong>认证框架</strong></td>
+<td>Spring Security</td>
+<td>+ JWT (jjwt 0.12.x)</td>
+</tr>
+<tr>
+<td><strong>密码加密</strong></td>
+<td>BCrypt</td>
+<td>Spring Security BCryptPasswordEncoder</td>
+</tr>
+<tr>
+<td><strong>业务数据库</strong></td>
+<td>PostgreSQL</td>
+<td>text2report（只读，HikariCP read-only=true）</td>
+</tr>
+<tr>
+<td><strong>元数据库</strong></td>
+<td>PostgreSQL</td>
+<td>text2report-meta（读写）</td>
+</tr>
+<tr>
+<td><strong>向量数据库</strong></td>
+<td>PostgreSQL + pgvector</td>
+<td>meta_embedding 表，HNSW cosine 索引</td>
+</tr>
+<tr>
+<td><strong>缓存</strong></td>
+<td>Redis</td>
+<td>7（Alibaba Cloud Docker 容器）</td>
+</tr>
+<tr>
+<td><strong>LLM 服务</strong></td>
+<td>DeepSeek API</td>
+<td>deepseek-chat 模型，通过 LLMService 接口隔离</td>
+</tr>
+<tr>
+<td><strong>LLM 通信</strong></td>
+<td>OkHttp</td>
+<td>LLMAsyncExecutor 异步 HTTP</td>
+</tr>
+<tr>
+<td><strong>Embedding 模型</strong></td>
+<td>BGE-M3</td>
+<td>本地 Ollama HTTP 推理服务，1024 维向量</td>
+</tr>
+<tr>
+<td><strong>Embedding 接入</strong></td>
+<td>Spring AI Ollama</td>
+<td>spring.ai.ollama 自动配置</td>
+</tr>
+<tr>
+<td><strong>向量存储</strong></td>
+<td>pgvector</td>
+<td>meta_embedding 表 1024 维 vector</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-系统整体架构" tabindex="-1">3. 系统整体架构</h2>
+<pre class="mermaid">
+graph TD
+    subgraph "用户层"
+        U[用户/管理员]
+    end
+
+    subgraph "前端 React 18 + TypeScript + Ant Design 5"
+        FE[React SPA]
+        MSW[MSW Mock Server]
+    end
+
+    subgraph "网关与过滤器链"
+        TF[TraceFilter
+建立 RequestId]
+        JAF[JwtAuthFilter
+JWT 校验 + Redis 黑名单 + 会话 JTI]
+        RLF[RateLimitFilter
+Redis Sorted Set 滑动窗口]
+    end
+
+    subgraph "Controller 层"
+        QC[QueryController]
+        MC[MetadataController]
+        OC[OrgController]
+        AC[AuthController]
+        UC[UserController]
+        EC[EmbeddingController]
+        AUC[AuditController]
+        DSC[DataSourceController]
+        HC[HealthController]
+    end
+
+    subgraph "Service 编排层"
+        OS[OrchestratorService]
+        US[UserService
+组织权限裁剪]
+        QCS[QueryCacheService
+Redis 缓存]
+    end
+
+    subgraph "LLM 服务层"
+        LS[LLMService 接口]
+        OAI[OpenAILLMService
+DeepSeek API]
+        LLS[LocalLLMService
+预留 Qwen]
+        LAE[LLMAsyncExecutor
+OkHttp @Async]
+    end
+
+    subgraph "元数据与 RAG 层"
+        MS[MetadataService
+向量优先 + 关键词兜底]
+        ES[EmbeddingService
+BGE-M3 向量化]
+        BGE[本地 BGE-M3
+Ollama HTTP 推理]
+        PB[PromptBuilder
+加载 /prompts 模板]
+    end
+
+    subgraph "SQL 安全层"
+        SGS[SqlGuardService
+JSqlParser AST 校验]
+    end
+
+    subgraph "执行层"
+        QES[QueryExecutorService
+PreparedStatement 只读执行]
+    end
+
+    subgraph "审计层"
+        AS[AuditService
+@Async 异步写入]
+    end
+
+    subgraph "数据源"
+        BDS[(businessDataSource
+text2report 只读)]
+        MDS[(metaDataSource
+text2report-meta 读写)]
+        VDS[(vectorDataSource
+meta_embedding pgvector)]
+        REDIS[(Redis 7
+Cache/Session/RateLimit)]
+    end
+
+    subgraph "外部服务"
+        DS[DeepSeek API
+deepseek-chat]
+    end
+
+    U --> FE
+    FE --> MSW
+    FE --> TF
+    TF --> JAF
+    JAF --> RLF
+    RLF --> QC
+    RLF --> MC
+    RLF --> OC
+    RLF --> AC
+    RLF --> UC
+    RLF --> EC
+    RLF --> AUC
+    RLF --> DSC
+    RLF --> HC
+
+    QC --> OS
+    OS --> US
+    OS --> QCS
+    QCS --> REDIS
+    OS --> MS
+    MS --> ES
+    ES --> BGE
+    MS --> PB
+    PB --> LS
+    LS --> OAI
+    OAI --> LAE
+    LAE --> DS
+    OS --> SGS
+    SGS --> QES
+    QES --> BDS
+    MS --> MDS
+    ES --> VDS
+    OS --> AS
+    AS --> MDS
+
+    %% 安全约束虚线标注
+    SGS -.- |"仅传 ResultProfile
+禁止传原始业务数据行"| LS
+    SGS -.- |"仅允许 SELECT / WITH SELECT
+禁止 INSERT/UPDATE/DELETE/DROP"| QES
+
+</pre>
+<h3 id="安全约束说明" tabindex="-1">安全约束说明</h3>
+<p>图中虚线标注两个核心安全约束：</p>
+<ul>
+<li><strong>LLM 隔离边界</strong>：<code>OrchestratorService → LLMService.summarizeResults(ResultProfile)</code> 仅传递 <code>ResultProfile</code>（包含 rowCount、columnNames、hasData），严禁传递原始业务数据行</li>
+<li><strong>SQL 语句白名单</strong>：<code>SqlGuardService</code> 在 AST 层面仅放行 SELECT 和 WITH…SELECT，所有写操作（INSERT/UPDATE/DELETE/DROP/TRUNCATE/ALTER/MERGE/EXECUTE）在解析后立即拦截</li>
+</ul>
+<hr>
+<h2 id="4-前端完整架构" tabindex="-1">4. 前端完整架构</h2>
+<pre class="mermaid">
+graph LR
+    subgraph "App 入口"
+        APP[App.tsx]
+        RT[routes.tsx
+createBrowserRouter]
+        AG[AuthGuard.tsx
+登录态守卫]
+    end
+
+    subgraph "Layouts 布局"
+        QL[QueryLayout.tsx
+查询域侧边栏]
+        AL[AdminLayout.tsx
+管理域侧边栏]
+    end
+
+    subgraph "Pages 页面 - 查询域"
+        QP[QueryPage.tsx
+查询主页]
+        HP[HistoryPage.tsx
+历史查询]
+        FP[FavoritesPage.tsx
+收藏管理]
+    end
+
+    subgraph "Pages 页面 - 管理域"
+        OTP[OrgTreePage.tsx
+组织树]
+        UMP[UserManagePage.tsx
+用户管理]
+        EMP[EmbeddingManagePage.tsx
+向量管理]
+        DDL[DDLUploadPage.tsx
+DDL 上传]
+        TLP[TableListPage.tsx
+表列表]
+        GP[GlossaryPage.tsx
+术语管理]
+        JEP[JoinEdgePage.tsx
+JOIN 边管理]
+        SGP[SchemaGraphPage.tsx
+Schema 图]
+        EP[ExamplesPage.tsx
+示例管理]
+        ALP[AuditLogPage.tsx
+审计日志]
+        DSLP[DataSourceListPage.tsx
+数据源管理]
+    end
+
+    subgraph "Components 组件 - 查询"
+        QI[QueryInput
+查询输入框]
+        RTBL[ResultTable
+结果表格]
+        RC[ResultChart
+ECharts 图表]
+        SPV[SqlPreview
+SQL 预览]
+        QS[QuerySummary
+查询摘要]
+        CB[ConfidenceBadge
+置信度徽章]
+        LS[LoadingSkeleton
+加载骨架屏]
+        COS[OrgSelector
+组织选择器]
+    end
+
+    subgraph "Components 组件 - 管理"
+        CE[ColumnEditor
+列编辑器]
+        OTE[OrgTreeEditor
+组织树编辑器]
+        DE[DDLEditor
+DDL 编辑器]
+        GF[GlossaryForm
+术语表单]
+        DSF[DataSourceForm
+数据源表单]
+        ATFB[AdminTableFilterBar
+管理端表格筛选栏]
+        SCode[SqlCodeBlock
+SQL 代码块]
+        BM[BrandMark
+品牌标识]
+        IBI[InsightBridgeIcon
+品牌图标]
+    end
+
+    subgraph "State 状态管理 Zustand"
+        UAS[useAuthStore
+认证状态 + persist]
+        UOS[useOrgStore
+组织状态]
+        UQS[useQueryStore
+查询状态]
+    end
+
+    subgraph "Services API 层"
+        REQ[request.ts
+axios 实例 + JWT 拦截]
+        QA[queryApi
+查询 API]
+        MA[metadataApi
+元数据 API]
+        OA[orgApi
+组织 API]
+        AA[authApi
+认证 API]
+        UA[userApi
+用户 API]
+        EA[embeddingApi
+向量 API]
+        AUA[auditApi
+审计 API]
+        DSA[dataSourceApi
+数据源 API]
+    end
+
+    subgraph "Types 类型定义"
+        TQ[query.d.ts]
+        TM[metadata.d.ts]
+        TO[org.d.ts]
+        TA[auth.d.ts]
+        TU[user.ts]
+        TAPI[api.d.ts]
+    end
+
+    subgraph "Hooks 自定义钩子"
+        UOH[useOrg]
+        UAH[useAuth]
+        UWH[useWebSocket]
+    end
+
+    subgraph "MSW Mock 层"
+        MSW_H[mocks/handlers/
+auth/query/org/metadata/audit/user/embedding]
+        MSW_D[mocks/data/
+queryData/orgData/metadataData/auditData]
+        MSW_HL[mocks/helpers/
+authHelpers]
+    end
+
+    subgraph "Utils 工具"
+        TP[tablePagination.ts
+buildCompactTablePagination]
+        AE[apiError.ts
+API 错误标准化]
+        FMT[formatters.ts
+日期/金额/百分比]
+        CNST[constants.ts]
+    end
+
+    APP --> RT
+    RT --> AG
+    AG --> QL
+    AG --> AL
+    QL --> QP
+    QL --> HP
+    QL --> FP
+    AL --> OTP
+    AL --> UMP
+    AL --> EMP
+    AL --> DDL
+    AL --> TLP
+    AL --> GP
+    AL --> JEP
+    AL --> SGP
+    AL --> EP
+    AL --> ALP
+    AL --> DSLP
+
+    QP --> QI
+    QP --> RTBL
+    QP --> RC
+    QP --> SPV
+    QP --> QS
+    QP --> CB
+    QP --> LS
+    QP --> COS
+
+    OTP --> OTE
+    DDL --> DE
+    GP --> GF
+    DSLP --> DSF
+
+    QP --> UQS
+    HP --> UQS
+    FP --> UQS
+    OTP --> UOS
+    AG --> UAS
+
+    REQ --> UAS
+    QA --> REQ
+    MA --> REQ
+    OA --> REQ
+    AA --> REQ
+    UA --> REQ
+    EA --> REQ
+    AUA --> REQ
+    DSA --> REQ
+
+    MSW_H --> MSW_D
+    MSW_H --> MSW_HL
+
+</pre>
+<h3 id="4-1路由结构" tabindex="-1">4.1 路由结构</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>页面组件</th>
+<th>布局</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/login</code></td>
+<td>LoginPage</td>
+<td>无</td>
+<td>公开</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>重定向到 <code>/query</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>/query</code></td>
+<td>QueryPage</td>
+<td>QueryLayout</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/query/history</code></td>
+<td>HistoryPage</td>
+<td>QueryLayout</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/query/favorites</code></td>
+<td>FavoritesPage</td>
+<td>QueryLayout</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/admin</code></td>
+<td>重定向到 <code>/admin/org-tree</code></td>
+<td>—</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/admin/org-tree</code></td>
+<td>OrgTreePage</td>
+<td>AdminLayout</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/admin/users</code></td>
+<td>UserManagePage</td>
+<td>AdminLayout</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/admin/schema-graph</code></td>
+<td>SchemaGraphPage</td>
+<td>AdminLayout</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/admin/audit</code></td>
+<td>AuditLogPage</td>
+<td>AdminLayout</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/admin/ddl</code></td>
+<td>DDLUploadPage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/tables</code></td>
+<td>TableListPage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/glossary</code></td>
+<td>GlossaryPage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/joins</code></td>
+<td>JoinEdgePage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/examples</code></td>
+<td>ExamplesPage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/datasources</code></td>
+<td>DataSourceListPage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/admin/embeddings</code></td>
+<td>EmbeddingManagePage</td>
+<td>AdminLayout</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-2状态管理(ZustandStores)" tabindex="-1">4.2 状态管理 (Zustand Stores)</h3>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>文件</th>
+<th>持久化</th>
+<th>核心状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useAuthStore</code></td>
+<td><code>store/useAuthStore.ts</code></td>
+<td>persist (localStorage)</td>
+<td>token, user, role, login/logout/refresh</td>
+</tr>
+<tr>
+<td><code>useOrgStore</code></td>
+<td><code>store/useOrgStore.ts</code></td>
+<td>—</td>
+<td>orgTree, selectedOrg, fetchOrgTree</td>
+</tr>
+<tr>
+<td><code>useQueryStore</code></td>
+<td><code>store/useQueryStore.ts</code></td>
+<td>—</td>
+<td>currentResult, history, loading, error</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-3API服务层" tabindex="-1">4.3 API 服务层</h3>
+<table>
+<thead>
+<tr>
+<th>API 模块</th>
+<th>文件</th>
+<th>基路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request.ts</code></td>
+<td><code>services/request.ts</code></td>
+<td>axios 实例，withCredentials 发送 httpOnly cookie JWT，401 拦截跳转登录，API 错误标准化处理</td>
+</tr>
+<tr>
+<td><code>queryApi</code></td>
+<td><code>services/queryApi.ts</code></td>
+<td><code>/api/v1/query</code></td>
+</tr>
+<tr>
+<td><code>metadataApi</code></td>
+<td><code>services/metadataApi.ts</code></td>
+<td><code>/api/v1/metadata</code></td>
+</tr>
+<tr>
+<td><code>orgApi</code></td>
+<td><code>services/orgApi.ts</code></td>
+<td><code>/api/v1/orgs</code></td>
+</tr>
+<tr>
+<td><code>authApi</code></td>
+<td><code>services/authApi.ts</code></td>
+<td><code>/api/v1/auth</code></td>
+</tr>
+<tr>
+<td><code>userApi</code></td>
+<td><code>services/userApi.ts</code></td>
+<td><code>/api/v1/users</code></td>
+</tr>
+<tr>
+<td><code>embeddingApi</code></td>
+<td><code>services/embeddingApi.ts</code></td>
+<td><code>/api/v1/embeddings</code></td>
+</tr>
+<tr>
+<td><code>auditApi</code></td>
+<td><code>services/auditApi.ts</code></td>
+<td><code>/api/v1/audit</code></td>
+</tr>
+<tr>
+<td><code>dataSourceApi</code></td>
+<td><code>services/dataSourceApi.ts</code></td>
+<td><code>/api/v1/datasources</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="4-4MSWMock处理器" tabindex="-1">4.4 MSW Mock 处理器</h3>
+<table>
+<thead>
+<tr>
+<th>Handler 文件</th>
+<th>覆盖接口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mocks/handlers/authHandlers.ts</code></td>
+<td><code>POST /api/v1/auth/login</code>, <code>POST /api/v1/auth/logout</code>, <code>GET /api/v1/auth/me</code>, <code>POST /api/v1/auth/refresh</code></td>
+</tr>
+<tr>
+<td><code>mocks/handlers/queryHandlers.ts</code></td>
+<td><code>POST /api/v1/query</code>, <code>GET /api/v1/query/history</code>, <code>GET/POST/DELETE /api/v1/query/:requestId/favorite</code>, <code>POST /api/v1/query/:requestId/feedback</code></td>
+</tr>
+<tr>
+<td><code>mocks/handlers/orgHandlers.ts</code></td>
+<td><code>GET /api/v1/orgs/tree</code>, <code>GET /api/v1/orgs/my-tree</code>, <code>GET /api/v1/orgs/:id/subtree-ids</code></td>
+</tr>
+<tr>
+<td><code>mocks/handlers/metadataHandlers.ts</code></td>
+<td>所有 <code>/api/v1/metadata/*</code> 接口</td>
+</tr>
+<tr>
+<td><code>mocks/handlers/auditHandlers.ts</code></td>
+<td><code>GET /api/v1/audit/logs</code>, <code>GET /api/v1/audit/stats</code></td>
+</tr>
+<tr>
+<td><code>mocks/handlers/userHandlers.ts</code></td>
+<td><code>GET/POST/PUT /api/v1/users</code>, <code>PUT /api/v1/users/:id/activate</code></td>
+</tr>
+<tr>
+<td><code>mocks/handlers/embeddingHandlers.ts</code></td>
+<td><code>POST /api/v1/embeddings/sync</code>, <code>POST /api/v1/embeddings/search</code>, <code>GET /api/v1/embeddings/stats</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="5-后端完整架构" tabindex="-1">5. 后端完整架构</h2>
+<pre class="mermaid">
+graph TD
+    subgraph "Controller 层"
+        QC2[QueryController
+@RestController
+/api/v1/query]
+        MC2[MetadataController
+@RestController
+/api/v1/metadata]
+        OC2[OrgController
+@RestController
+/api/v1/orgs]
+        AC2[AuthController
+@RestController
+/api/v1/auth]
+        UC2[UserController
+@RestController
+/api/v1/users]
+        EC2[EmbeddingController
+@RestController
+/api/v1/embeddings]
+        AUC2[AuditController
+@RestController
+/api/v1/audit]
+        DSC2[DataSourceController
+@RestController
+/api/v1/datasources]
+        HC2[HealthController
+@RestController
+/api/v1/health]
+    end
+
+    subgraph "Service 层 - 核心查询"
+        OS2[OrchestratorService
+端到端查询编排]
+        SGS2[SqlGuardService
+JSqlParser AST 校验]
+        QES2[QueryExecutorService
+PreparedStatement 执行]
+        QCS2[QueryCacheService
+Redis 查询缓存]
+        AS2[AuditService
+@Async 异步审计]
+        PB2[PromptBuilder
+模板填充]
+    end
+
+    subgraph "Service 层 - LLM"
+        LS2[LLMService 接口
+5 个方法]
+        OAI2[OpenAILLMService
+DeepSeek 实现]
+        LLS2[LocalLLMService
+Qwen 预留]
+        LAE2[LLMAsyncExecutor
+OkHttp 线程池]
+        BGE2[BgeEmbeddingProvider
+Spring AI Ollama]
+    end
+
+    subgraph "Service 层 - 元数据与 RAG"
+        MS2[MetadataService
+向量优先混合检索]
+        ES2[EmbeddingService
+向量化与同步]
+    end
+
+    subgraph "Service 层 - SQL 元数据校验"
+        SMV[SqlMetadataValidator
+生成 SQL 元数据校验]
+        TRS[TableRelevanceScorer
+候选表相关性评分]
+    end
+
+    subgraph "Service 层 - 业务"
+        US2[UserService
+用户管理 + 权限]
+        OrgS2[OrgService
+组织树]
+        HS2[HistoryService
+查询历史]
+        FS2[FeedbackService
+反馈管理]
+        FAVS2[FavoriteService
+收藏管理]
+        DDPS2[DDLParserService
+DDL 解析 + 元数据发布]
+        DSS2[DataSourceService
+数据源管理]
+        AQS2[AuditQueryService
+审计日志查询]
+        PRC2[PostgresRiskCatalog
+PostgreSQL 风险目录]
+    end
+
+    subgraph "Domain 层 - Entity"
+        subgraph "meta 实体"
+            MT[MetaTable]
+            MC[MetaColumn]
+            MG[MetaGlossary]
+            MJE[MetaJoinEdge]
+            MSE[MetaSqlExample]
+            MDU[MetaDdlUpload]
+            MDS_ENT[MetaDatasource]
+            DO[DimOrg]
+            DP[DimProduct]
+            DC[DimChannel]
+            FGP[FactGrossProfitDetail]
+            SU[SysUser]
+            SUO[SysUserOrg]
+            AQL[AuditQueryLog]
+        end
+        subgraph "vector 实体"
+            ME["MetaEmbedding
+vector(1024)"]
+        end
+    end
+
+    subgraph "Domain 层 - Mapper"
+        subgraph "meta mapper"
+            MTM[MetaTableMapper]
+            MCM[MetaColumnMapper]
+            MGM[MetaGlossaryMapper]
+            MJEM[MetaJoinEdgeMapper]
+            MSEM[MetaSqlExampleMapper]
+            MDUM[MetaDdlUploadMapper]
+            MDSM[MetaDatasourceMapper]
+            DOM[DimOrgMapper]
+            SUM[SysUserMapper]
+            SUOM[SysUserOrgMapper]
+            AQLM[AuditQueryLogMapper]
+        end
+        subgraph "vector mapper"
+            MEM[MetaEmbeddingMapper]
+        end
+    end
+
+    subgraph "Config 层"
+        BDC[BusinessDataSourceConfig
+HikariCP read-only=true]
+        MDC[MetaDataSourceConfig
+HikariCP read-only=false]
+        VDC[VectorDataSourceConfig
+pgvector 专用连接]
+        SC[SecurityConfig
+Spring Security + JWT]
+        AC3[AsyncConfig
+@EnableAsync + 线程池]
+        RC[RagConfig
+RAG 阈值/topK 参数]
+        LC[LLMConfig
+LLM provider 配置]
+        REDC[RedisConfig
+Lettuce 连接]
+        RLC[RateLimitProperties
+限流参数]
+        SGP[SqlGuardProperties
+SQL Guard 参数]
+        DUP[DemoUsersProperties
+Demo 用户]
+        ACP[AuthCookieProperties
+JWT Cookie 安全配置]
+        BJC[BusinessJdbcTemplateConfig
+JdbcTemplate]
+        TZC[TimeZoneConfig
+Asia/Shanghai]
+    end
+
+    subgraph "Security / Common 层"
+        JU[JwtUtil
+JWT 签发/验证/解析]
+        JTR[JwtTokenResolver
+Cookie/Bearer 统一提取]
+        JAF2[JwtAuthFilter
+OncePerRequestFilter]
+        TF2[TraceFilter
+建立 requestId]
+        RLF2[RateLimitFilter
+Redis 滑动窗口]
+        RQ[RequestLoggingFilter
+请求日志]
+        SCRF[SpaCsrfTokenRequestHandler
+SPA CSRF 处理]
+        TC[TraceContext
+ThreadLocal]
+        AR["ApiResult&lt;T&gt;
+统一响应"]
+        PR["PageResult&lt;T&gt;
+分页响应"]
+        BE[BusinessException
+业务异常]
+        EC_ERR[ErrorCode
+错误码枚举]
+        GEH[GlobalExceptionHandler
+@ControllerAdvice]
+        JC[JwtConstants]
+        PRC_CMN[PostgresRiskCatalog
+SQL 风险函数目录]
+    end
+
+    subgraph "数据源"
+        BDS2[(businessDataSource
+text2report
+HikariCP read-only=true)]
+        MDS2[(metaDataSource
+text2report-meta
+读写)]
+        VDS2[(vectorDataSource
+pgvector
+meta_embedding)]
+        REDIS2[(Redis 7
+Cache/Session/RateLimit)]
+    end
+
+    %% Controller → Service
+    QC2 --> OS2
+    QC2 --> HS2
+    QC2 --> FS2
+    QC2 --> FAVS2
+    MC2 --> DDPS2
+    MC2 --> MS2
+    MC2 --> DSS2
+    OC2 --> OrgS2
+    OC2 --> US2
+    AC2 --> US2
+    UC2 --> US2
+    EC2 --> ES2
+    AUC2 --> AQS2
+
+    %% Orchestrator → services
+    OS2 --> MS2
+    OS2 --> OrgS2
+    OS2 --> US2
+    OS2 --> SGS2
+    OS2 --> SMV
+    OS2 --> QES2
+    OS2 --> QCS2
+    OS2 --> AS2
+    OS2 --> PB2
+    OS2 --> LS2
+
+    %% LLM
+    LS2 --> OAI2
+    LS2 --> LLS2
+    OAI2 --> LAE2
+    LS2 --> BGE2
+
+    %% Metadata and RAG
+    MS2 --> ES2
+    MS2 --> TRS
+
+    %% SQL Metadata Validation
+    SMV --> SGS2
+
+    %% Data sources
+    QES2 --> BDS2
+    MS2 --> MDS2
+    AS2 --> MDS2
+    US2 --> MDS2
+    OrgS2 --> MDS2
+    ES2 --> VDS2
+    QCS2 --> REDIS2
+    LAE2 --> |HTTPS| DS_EXT[DeepSeek API]
+    BGE2 --> |HTTP| OLLAMA[本地 Ollama BGE-M3]
+
+</pre>
+<h3 id="5-1Controller层清单" tabindex="-1">5.1 Controller 层清单</h3>
+<table>
+<thead>
+<tr>
+<th>Controller</th>
+<th>基路径</th>
+<th>依赖 Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QueryController</code></td>
+<td><code>/api/v1/query</code></td>
+<td>OrchestratorService, HistoryService, FeedbackService, FavoriteService</td>
+</tr>
+<tr>
+<td><code>MetadataController</code></td>
+<td><code>/api/v1/metadata</code></td>
+<td>DDLParserService, MetadataService, DataSourceService</td>
+</tr>
+<tr>
+<td><code>OrgController</code></td>
+<td><code>/api/v1/orgs</code></td>
+<td>OrgService, UserService</td>
+</tr>
+<tr>
+<td><code>AuthController</code></td>
+<td><code>/api/v1/auth</code></td>
+<td>UserService (JWT 签发/验证)</td>
+</tr>
+<tr>
+<td><code>UserController</code></td>
+<td><code>/api/v1/users</code></td>
+<td>UserService</td>
+</tr>
+<tr>
+<td><code>EmbeddingController</code></td>
+<td><code>/api/v1/embeddings</code></td>
+<td>EmbeddingService</td>
+</tr>
+<tr>
+<td><code>AuditController</code></td>
+<td><code>/api/v1/audit</code></td>
+<td>AuditService</td>
+</tr>
+<tr>
+<td><code>DataSourceController</code></td>
+<td><code>/api/v1/datasources</code></td>
+<td>DataSourceService</td>
+</tr>
+<tr>
+<td><code>HealthController</code></td>
+<td><code>/api/v1/health</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="5-2Service层完整清单" tabindex="-1">5.2 Service 层完整清单</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>包</th>
+<th>核心职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OrchestratorService</code></td>
+<td><code>service/</code></td>
+<td>端到端查询编排：意图识别 → 权限校验 → 元数据检索 → LLM 生成 SQL → SqlMetadataValidator 校验 → Guard 校验 → 执行 → 摘要 → 缓存 → 审计</td>
+</tr>
+<tr>
+<td><code>LLMService</code> (接口)</td>
+<td><code>service/llm/</code></td>
+<td>LLM 调用统一接口：generateSQL / summarizeResults / repairSQL / detectIntent / recommendChartType / generateEmbedding</td>
+</tr>
+<tr>
+<td><code>OpenAILLMService</code></td>
+<td><code>service/llm/</code></td>
+<td>LLMService 的 DeepSeek/OpenAI 实现，通过 OkHttp 异步调用</td>
+</tr>
+<tr>
+<td><code>LocalLLMService</code></td>
+<td><code>service/llm/</code></td>
+<td>预留 Qwen 本地推理实现</td>
+</tr>
+<tr>
+<td><code>LLMAsyncExecutor</code></td>
+<td><code>service/llm/</code></td>
+<td>OkHttp 线程池 HTTP 通信，@Async(“llmExecutor”)</td>
+</tr>
+<tr>
+<td><code>BgeEmbeddingProvider</code></td>
+<td><code>service/llm/</code></td>
+<td>Spring AI Ollama 接入 BGE-M3 embedding</td>
+</tr>
+<tr>
+<td><code>SqlGuardService</code></td>
+<td><code>service/</code></td>
+<td>JSqlParser AST 校验：禁止写操作/系统表/危险函数/SELECT *，自动 LIMIT 注入，组织范围校验 + 自动补全缺失的 org_id 过滤条件</td>
+</tr>
+<tr>
+<td><code>SqlMetadataValidator</code></td>
+<td><code>service/</code></td>
+<td>LLM 生成 SQL 后的元数据校验：验证 SQL 中引用的表/列在发布的元数据中存在，防止幻觉表名/列名</td>
+</tr>
+<tr>
+<td><code>TableRelevanceScorer</code></td>
+<td><code>service/</code></td>
+<td>候选表多维度相关性评分：词汇引用 + 示例引用 + 表类型 + 元数据质量 + 向量相似度加权排序</td>
+</tr>
+<tr>
+<td><code>QueryExecutorService</code></td>
+<td><code>service/</code></td>
+<td>PreparedStatement 执行 SQL，只读连接池，enrichColumnMeta 补中文列名</td>
+</tr>
+<tr>
+<td><code>MetadataService</code></td>
+<td><code>service/</code></td>
+<td>元数据检索：向量优先（pgvector cosine）+ 关键词兜底 + TableRelevanceScorer 二次排序；DDL 确认后的发布生命周期管理</td>
+</tr>
+<tr>
+<td><code>EmbeddingService</code></td>
+<td><code>service/</code></td>
+<td>BGE-M3 向量化：embedAndStore / searchSimilar / syncAll</td>
+</tr>
+<tr>
+<td><code>OrgService</code></td>
+<td><code>service/</code></td>
+<td>组织树递归展开（resolveSubtreeIds），组织路径解析，业务库组织同步</td>
+</tr>
+<tr>
+<td><code>UserService</code> (接口+实现)</td>
+<td><code>service/</code></td>
+<td>用户 CRUD + 组织权限授予/撤销 + resolveAccessibleOrgIds + 密码修改</td>
+</tr>
+<tr>
+<td><code>AuditService</code></td>
+<td><code>service/</code></td>
+<td>@Async 异步 upsert 到 audit_query_logs：logQueryStart / updateAuditLog / updateAuditLogFromCache</td>
+</tr>
+<tr>
+<td><code>AuditQueryService</code></td>
+<td><code>service/</code></td>
+<td>审计日志多维度查询、分页、聚合统计</td>
+</tr>
+<tr>
+<td><code>QueryCacheService</code></td>
+<td><code>service/</code></td>
+<td>Redis 查询结果缓存，TTL 1800s</td>
+</tr>
+<tr>
+<td><code>HistoryService</code></td>
+<td><code>service/</code></td>
+<td>查询历史分页、详情、筛选</td>
+</tr>
+<tr>
+<td><code>FeedbackService</code></td>
+<td><code>service/</code></td>
+<td>用户反馈提交</td>
+</tr>
+<tr>
+<td><code>FavoriteService</code></td>
+<td><code>service/</code></td>
+<td>收藏管理：增/删/查</td>
+</tr>
+<tr>
+<td><code>DDLParserService</code></td>
+<td><code>service/</code></td>
+<td>PostgreSQL COMMENT ON 格式 DDL 解析 + 元数据发布生命周期管理（草稿 → 已发布）</td>
+</tr>
+<tr>
+<td><code>DataSourceService</code></td>
+<td><code>service/</code></td>
+<td>数据源注册管理</td>
+</tr>
+<tr>
+<td><code>PromptBuilder</code></td>
+<td><code>service/</code></td>
+<td>加载 /prompts 模板并填充占位符</td>
+</tr>
+<tr>
+<td><code>PostgresRiskCatalog</code></td>
+<td><code>service/</code></td>
+<td>PostgreSQL 风险函数/模式/前缀静态清单，供 SqlGuardService 引用</td>
+</tr>
+<tr>
+<td><code>AuthService</code></td>
+<td><code>service/</code></td>
+<td>JWT-based 认证服务（登录/登出/token 刷新）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="5-3DomainEntity清单" tabindex="-1">5.3 Domain Entity 清单</h3>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>所在包</th>
+<th>对应表</th>
+<th>数据库</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DimOrg</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>dim_org</td>
+<td>text2report / text2report-meta (同步)</td>
+</tr>
+<tr>
+<td><code>DimProduct</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>dim_product</td>
+<td>text2report (NamedParameterJdbcTemplate 查询)</td>
+</tr>
+<tr>
+<td><code>DimChannel</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>dim_channel</td>
+<td>text2report (NamedParameterJdbcTemplate 查询)</td>
+</tr>
+<tr>
+<td><code>FactGrossProfitDetail</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>fact_gross_profit_detail</td>
+<td>text2report (NamedParameterJdbcTemplate 查询)</td>
+</tr>
+<tr>
+<td><code>MetaTable</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_table</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaColumn</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_column</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaGlossary</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_glossary</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaJoinEdge</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_join_edge</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaSqlExample</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_sql_example</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaDdlUpload</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_ddl_upload</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaDatasource</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>meta_datasource</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>SysUser</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>sys_user</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>SysUserOrg</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>sys_user_org</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>AuditQueryLog</code></td>
+<td><code>domain/meta/entity/</code></td>
+<td>audit_query_logs</td>
+<td>text2report-meta</td>
+</tr>
+<tr>
+<td><code>MetaEmbedding</code></td>
+<td><code>domain/vector/entity/</code></td>
+<td>meta_embedding</td>
+<td>vectorDataSource (pgvector)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="5-4Mapper清单" tabindex="-1">5.4 Mapper 清单</h3>
+<table>
+<thead>
+<tr>
+<th>Mapper</th>
+<th>对应 Entity</th>
+<th>XML 映射</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DimOrgMapper</code></td>
+<td>DimOrg</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>SysUserMapper</code></td>
+<td>SysUser</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>SysUserOrgMapper</code></td>
+<td>SysUserOrg</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>AuditQueryLogMapper</code></td>
+<td>AuditQueryLog</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaTableMapper</code></td>
+<td>MetaTable</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaColumnMapper</code></td>
+<td>MetaColumn</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaGlossaryMapper</code></td>
+<td>MetaGlossary</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaJoinEdgeMapper</code></td>
+<td>MetaJoinEdge</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaSqlExampleMapper</code></td>
+<td>MetaSqlExample</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaDdlUploadMapper</code></td>
+<td>MetaDdlUpload</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaDatasourceMapper</code></td>
+<td>MetaDatasource</td>
+<td>mapper/meta/</td>
+</tr>
+<tr>
+<td><code>MetaEmbeddingMapper</code></td>
+<td>MetaEmbedding</td>
+<td>mapper/vector/</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>注意</strong>：项目中不存在 <code>domain/business/mapper/</code> 包。业务数据库 <code>text2report</code> 的查询通过 <code>NamedParameterJdbcTemplate</code> (via <code>QueryExecutorService</code>) 执行，不通过 MyBatis Mapper。<code>DimOrg</code> 等业务实体定义在 <code>domain/meta/entity/</code> 包中，仅用于数据传输（DTO），其持久化操作经 <code>DimOrgMapper</code> 查询 <code>text2report-meta</code> 中的同步副本。</p>
+</blockquote>
+<h3 id="5-5Config层清单" tabindex="-1">5.5 Config 层清单</h3>
+<table>
+<thead>
+<tr>
+<th>配置类</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BusinessDataSourceConfig</code></td>
+<td>businessDataSource Bean：text2report 只读 HikariCP + JdbcTemplate</td>
+</tr>
+<tr>
+<td><code>MetaDataSourceConfig</code></td>
+<td>metaDataSource Bean：text2report-meta 读写 HikariCP + MyBatis-Plus SqlSessionFactory</td>
+</tr>
+<tr>
+<td><code>VectorDataSourceConfig</code></td>
+<td>vectorDataSource Bean：pgvector 专用连接，MyBatis-Plus</td>
+</tr>
+<tr>
+<td><code>SecurityConfig</code></td>
+<td>Spring Security：JWT 无状态会话、CORS、CSRF（SpaCsrfTokenRequestHandler）、角色授权、过滤器链顺序</td>
+</tr>
+<tr>
+<td><code>AsyncConfig</code></td>
+<td>@EnableAsync + 3 线程池：llmExecutor（核心 2/最大 4）、auditExecutor、embeddingExecutor</td>
+</tr>
+<tr>
+<td><code>RagConfig</code></td>
+<td>RAG 参数：similarityThreshold、topK、fallback-to-keyword</td>
+</tr>
+<tr>
+<td><code>LLMConfig</code></td>
+<td>LLM provider 配置：api-key、base-url、model、temperature、max-tokens</td>
+</tr>
+<tr>
+<td><code>RedisConfig</code></td>
+<td>Lettuce 连接配置 + RedisTemplate</td>
+</tr>
+<tr>
+<td><code>RateLimitProperties</code></td>
+<td>限流参数：窗口大小、各角色每分钟限制</td>
+</tr>
+<tr>
+<td><code>SpaCsrfTokenRequestHandler</code></td>
+<td>SPA CSRF 令牌处理器</td>
+</tr>
+<tr>
+<td><code>RateLimitFilter</code></td>
+<td>Redis Sorted Set 滑动窗口限流（OncePerRequestFilter）</td>
+</tr>
+<tr>
+<td><code>SqlGuardProperties</code></td>
+<td>SQL Guard 参数：block-select-star、default-limit、query-timeout</td>
+</tr>
+<tr>
+<td><code>BusinessJdbcTemplateConfig</code></td>
+<td>业务库 NamedParameterJdbcTemplate</td>
+</tr>
+<tr>
+<td><code>TimeZoneConfig</code></td>
+<td>全局时区 Asia/Shanghai</td>
+</tr>
+<tr>
+<td><code>AuthCookieProperties</code></td>
+<td>JWT Cookie 安全配置：domain、secure、sameSite、path、cookieName</td>
+</tr>
+<tr>
+<td><code>SpaCsrfTokenRequestHandler</code></td>
+<td>SPA 适配的 CSRF 令牌处理器</td>
+</tr>
+<tr>
+<td><code>DemoUsersProperties</code></td>
+<td>Demo 用户 credentials 配置绑定</td>
+</tr>
+</tbody>
+</table>
+<h3 id="5-6Security&amp;Common层" tabindex="-1">5.6 Security &amp; Common 层</h3>
+<table>
+<thead>
+<tr>
+<th>类</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>JwtUtil</code></td>
+<td>JWT 签发（含 userId/username/role/orgId/jti）、验证、解析 Claims</td>
+</tr>
+<tr>
+<td><code>JwtTokenResolver</code></td>
+<td>Cookie/Bearer token 统一提取：Cookie 优先 → Header Bearer 降级（allowBearerToken 特性开关，默认关闭）</td>
+</tr>
+<tr>
+<td><code>JwtAuthFilter</code></td>
+<td>OncePerRequestFilter：JwtTokenResolver 提取 token → Redis 黑名单检查 → JWT 验证 → 会话 JTI 匹配 → 设置 SecurityContext + TraceContext</td>
+</tr>
+<tr>
+<td><code>TraceFilter</code></td>
+<td>最先执行，建立 requestId（UUID v4）到 TraceContext ThreadLocal</td>
+</tr>
+<tr>
+<td><code>RateLimitFilter</code></td>
+<td>Redis Sorted Set 滑动窗口限流，按角色分级</td>
+</tr>
+<tr>
+<td><code>RequestLoggingFilter</code></td>
+<td>HTTP 请求日志（method/URI/status/duration）</td>
+</tr>
+<tr>
+<td><code>TraceContext</code></td>
+<td>ThreadLocal：requestId / userId / role / orgId</td>
+</tr>
+<tr>
+<td><code>ApiResult&lt;T&gt;</code></td>
+<td>统一响应包装：{request_id, code, message, data}</td>
+</tr>
+<tr>
+<td><code>PageResult&lt;T&gt;</code></td>
+<td>分页响应：{records, total, page, pageSize}</td>
+</tr>
+<tr>
+<td><code>BusinessException</code></td>
+<td>业务异常，携带 ErrorCode</td>
+</tr>
+<tr>
+<td><code>ErrorCode</code></td>
+<td>错误码枚举：UNAUTHORIZED(401) / FORBIDDEN(403) / PARAM_INVALID(400) / SQL_GUARD_BLOCKED(4002) / LLM_TIMEOUT(4003) / UNSUPPORTED_INTENT(4004) / METADATA_ERROR(4005) / INTERNAL_ERROR(5001)</td>
+</tr>
+<tr>
+<td><code>GlobalExceptionHandler</code></td>
+<td>@ControllerAdvice 统一异常处理 → ApiResult</td>
+</tr>
+<tr>
+<td><code>JwtConstants</code></td>
+<td>JWT 常量：BLACKLIST_PREFIX = “t2r:blacklist:”, SESSION_PREFIX = “t2r:session:”, CACHE_PREFIX = “t2r:cache:query:”</td>
+</tr>
+<tr>
+<td><code>PostgresRiskCatalog</code></td>
+<td>PostgreSQL 风险目录：阻断的函数/系统对象/表前缀/系统 Schema 静态集（如 pg_read_file, lo_import, xp_cmdshell 等）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-核心查询链路完整时序" tabindex="-1">6. 核心查询链路完整时序</h2>
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as 用户
+    participant FE as 前端 React
+    participant TF as TraceFilter
+    participant JAF as JwtAuthFilter
+    participant RLF as RateLimitFilter
+    participant QC as QueryController
+    participant OS as OrchestratorService
+    participant US as UserService
+    participant QCS as QueryCacheService
+    participant MS as MetadataService
+    participant ES as EmbeddingService
+    participant PB as PromptBuilder
+    participant LS as LLMService
+    participant DS as DeepSeek API
+    participant SMV as SqlMetadataValidator
+    participant SGS as SqlGuardService
+    participant QES as QueryExecutorService
+    participant BDS as businessDataSource
+    participant AS as AuditService
+    participant REDIS as Redis
+
+    User->>FE: 输入自然语言问题 + 选择组织范围
+    FE->>FE: 构造 JSON body: {question, orgId}
+    FE->>TF: POST /api/v1/query<br/>Cookie: {JWT httpOnly}<br/>Header: X-CSRF-TOKEN<br/>Header: X-Request-ID
+    TF->>TF: UUID v4 → TraceContext.setRequestId()
+    TF->>JAF: doFilter()
+    JAF->>JAF: jwtTokenResolver.resolveToken()<br/>Cookie 优先 → Bearer 降级
+    JAF->>REDIS: EXISTS t2r:blacklist:{token}
+    REDIS-->>JAF: false (不在黑名单)
+    JAF->>JAF: jwtUtil.validateToken(token)
+    JAF->>JAF: jwtUtil.parseToken(token) → Claims
+    JAF->>REDIS: GET t2r:session:{userId}
+    REDIS-->>JAF: {jti}|{timestamp}
+    JAF->>JAF: 校验 token.jti == session.jti<br/>（单设备登录控制）
+    JAF->>JAF: TraceContext.setUserId/userId/setOrgId/setRole()
+    JAF->>JAF: SecurityContextHolder 设置 Authentication
+    JAF->>RLF: doFilter()
+    RLF->>REDIS: ZREMRANGEBYSCORE + ZADD<br/>滑动窗口计数
+    REDIS-->>RLF: count <= limit
+    RLF->>QC: doFilter()
+    QC->>OS: orchestratorService.query(question, orgId)
+    OS->>OS: buildQueryContext()<br/>构建 QueryContext
+    OS->>AS: auditService.logQueryStart(queryContext)
+    AS->>AS: @Async 异步写入 audit_query_logs
+    OS->>US: userService.resolveAccessibleOrgIds(userId)
+    US-->>OS: accessibleOrgIds: [1,2,11,12,13,14...]
+    OS->>QCS: getCachedResult(question, orgId)
+    QCS->>REDIS: GET t2r:cache:query:{md5}
+    REDIS-->>QCS: null (缓存未命中)
+
+    alt 缓存命中
+        QCS-->>OS: cached QueryResultDTO
+        OS->>AS: updateAuditLogFromCache()
+        OS-->>QC: cachedResult
+    else 缓存未命中
+        OS->>OS: initializeContext()<br/>意图识别 + 权限校验 + 子树展开
+        OS->>LS: detectIntent(question)
+        LS-->>OS: "query" / "trend" / "ranking" / ...
+
+        OS->>MS: retrieveForPrompt(question, datasourceId)
+        MS->>ES: searchSimilar(question, "sql_example", topK=5)
+        ES->>LS: generateEmbedding(question)
+        LS-->>ES: float[1024] BGE-M3 向量
+        ES->>ES: embeddingMapper.searchSimilar(vector, topK, "sql_example")
+        ES-->>MS: Top5 sql_examples
+        MS->>ES: searchSimilar(question, "glossary", topK=5)
+        ES-->>MS: Top5 glossary terms
+        MS->>ES: searchSimilar(question, "table_description", topK=3)
+        ES-->>MS: Top3 table descriptions
+        MS->>MS: 补充 columns + join_edges<br/>关键词兜底（相似度不足时）
+        MS-->>OS: MetadataContext
+
+        OS->>PB: buildSqlGenerationPrompt(dialect, orgPath, orgIds, metadataJson, question)
+        PB->>PB: 加载 /prompts/sql_generation_v1.txt<br/>填充 {dialect}/{org_context}/{org_ids}/{metadata_json}/{user_question}
+        PB-->>OS: 完整 Prompt 字符串
+
+        OS->>LS: generateSQL(question, metadataJson, orgId, prompt)
+        LS->>DS: POST {baseUrl}/chat/completions<br/>Authorization: Bearer {apiKey}<br/>Body: {model, messages, temperature, max_tokens, response_format: json_object}
+        DS-->>LS: choices[0].message.content<br/>{"sql": "...", "explanation": "...", "tables_used": [...], "confidence": 0.95}
+        LS-->>OS: generatedSql
+
+        OS->>SMV: validate(generatedSql, datasourceId)
+        SMV->>SMV: CCJSqlParserUtil.parse(sql)
+        SMV->>SMV: extractTableNames() → 提取 SQL 引用表名
+        SMV->>SMV: metaTableMapper.findPublishedByNames(tableNames)
+        SMV->>SMV: extractColumnReferences() → 提取列引用
+        SMV->>SMV: metaColumnMapper.findByTableIdsAndNames()
+        Note over SMV: 验证 SQL 中的表/列<br/>在已发布的元数据中均存在<br/>不存在则抛出 SQL_GUARD_BLOCKED
+        SMV-->>OS: validation passed
+
+        OS->>SGS: validate(generatedSql)
+        SGS->>SGS: CCJSqlParserUtil.parse(sql)
+        SGS->>SGS: validateStatement(): 拒绝非 SELECT
+        SGS->>SGS: validateSelect(): 拒绝系统 schema/危险函数/SELECT *
+        SGS->>SGS: injectLimit(): 无 LIMIT 则注入 LIMIT 1000
+        SGS-->>OS: validatedSql
+
+        OS->>OS: narrowOrgScope(question, subtreeIds)
+        Note over OS: 从用户问题中提取组织名称提及<br/>（如「子公司A」「销售部」）<br/>将 org scope 收缩到提及的组织<br/>自动补全事实表缺失的 org_id 过滤条件
+        OS->>SGS: validateOrgScope(validatedSql, narrowedOrgIds)
+        SGS->>SGS: 检查 SQL 中 org_id IN (allowedIds)
+        SGS->>SGS: 检查是否存在未授权 org_id 值<br/>自动注入缺失的 org_id WHERE 条件
+        SGS-->>OS: org scope 校验通过
+
+        alt Guard 校验失败
+            OS->>LS: repairSQL(sql, errorMessage, metadataJson)
+            LS->>DS: POST /chat/completions (repair prompt)
+            DS-->>LS: repaired SQL
+            LS-->>OS: repairedSql
+            Note over OS: 最多 2 次重试<br/>重试失败则抛出异常
+        end
+
+        OS->>QES: execute(validatedSql)
+        QES->>QES: PreparedStatement + queryTimeout=30s
+        QES->>BDS: 执行 SQL (read-only HikariCP)
+        BDS-->>QES: ResultSet
+        QES->>QES: enrichColumnMeta()<br/>查询 meta_column 补充中文列名
+        QES-->>OS: ExecutionResult {columns, rows, rowCount, executionMs}
+
+        OS->>LS: recommendChartType(columnNames, rowCount)
+        LS-->>OS: "bar" / "line" / "pie" / "table"
+
+        OS->>OS: ResultProfile {rowCount, columnCount, columnNames, hasData}
+        OS->>LS: summarizeResults(question, sql, resultProfile)
+        Note over OS,LS: 仅传 ResultProfile<br/>严禁传原始业务数据行
+        LS->>DS: POST /chat/completions (summary prompt)
+        DS-->>LS: {"summary": "...", "key_metrics": [...]}
+        LS-->>OS: summary
+
+        OS->>QCS: cacheResult(question, orgId, result)
+        QCS->>REDIS: SET t2r:cache:query:{md5}<br/>TTL 1800s
+
+        OS->>AS: updateAuditLog(queryContext, queryResult)
+        AS->>AS: @Async 异步 upsert<br/>(requestId/userId/orgId/sql/executionMs/rowCount/confidence/status)
+    end
+
+    OS-->>QC: QueryResultDTO
+    QC->>QC: maskSqlIfNeeded()<br/>非 ADMIN 角色移除 sql 字段
+    QC-->>FE: ApiResult＜QueryResultDTO＞
+    FE->>FE: Zustand store 更新 currentResult
+    FE->>User: 渲染表格(ECharts图表) + 摘要
+
+</pre>
+<h3 id="重试策略" tabindex="-1">重试策略</h3>
+<table>
+<thead>
+<tr>
+<th>失败原因</th>
+<th>是否重试</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unknown column / table</td>
+<td>是</td>
+<td><code>isRetryable()</code> 检测包含 column/table/relation/does not exist/syntax error/ambiguous</td>
+</tr>
+<tr>
+<td>JOIN ambiguity</td>
+<td>是</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>PostgreSQL dialect error</td>
+<td>是</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>Guard blocked</td>
+<td>视情况</td>
+<td>SQL_GUARD_BLOCKED + retryable → 重试；SQL_GUARD_BLOCKED + non-retryable → 不重试</td>
+</tr>
+<tr>
+<td>Permission denied</td>
+<td>否</td>
+<td>PARAM_INVALID → 直接抛出</td>
+</tr>
+<tr>
+<td>Unsupported intent</td>
+<td>否</td>
+<td>UNSUPPORTED_INTENT → 直接抛出</td>
+</tr>
+</tbody>
+</table>
+<p>默认最多 <strong>2 次重试</strong>（可配置 <code>app.query.max-retries</code>）。每次重试将错误信息附加到 repair prompt，并计入 <code>audit_query_log</code>。</p>
+<hr>
+<h2 id="7-RAG向量检索架构" tabindex="-1">7. RAG 向量检索架构</h2>
+<pre class="mermaid">
+graph TD
+    subgraph "RAG 写入路径"
+        W1[管理员新增/修改 SQL 示例]
+        W2[管理员新增/修改术语]
+        W3[DDL 上传确认]
+        W1 --> ES_W[EmbeddingService.embedAndStoreAsync]
+        W2 --> ES_W
+        W3 --> ES_W
+        ES_W --> |"@Async('llmExecutor')"| EMBED[llmService.generateEmbedding
+→ BGE-M3 HTTP 推理]
+        EMBED --> OLLAMA[本地 Ollama
+bge-m3 1024维]
+        OLLAMA --> PG[meta_embedding 表
+pgvector HNSW cosine 索引]
+        PG --> |upsert| VDB[(vectorDataSource)]
+    end
+
+    subgraph "RAG 查询路径"
+        Q[用户自然语言问题] --> MS_R[MetadataService.retrieveForPrompt]
+        MS_R --> EMBED_Q[EmbeddingService.searchSimilar
+→ generateEmbedding]
+        EMBED_Q --> OLLAMA_Q[本地 Ollama BGE-M3]
+        OLLAMA_Q --> SEARCH[embeddingMapper.searchSimilar
+pgvector cosine 相似度检索]
+        SEARCH --> VDB2[(vectorDataSource)]
+
+        SEARCH --> |source_type=sql_example topK=5
+阈>=0.65| EX[Top5 SQL 示例]
+        SEARCH --> |source_type=glossary topK=5
+阈>=0.60| GL[Top5 术语定义]
+        SEARCH --> |source_type=table_description topK=3
+阈>=0.55| TB[Top3 表描述]
+
+        EX --> CTX[MetadataContext]
+        GL --> CTX
+        TB --> CTX
+
+        CTX --> |向量结果不足时| FALLBACK[关键词 SQL LIKE 兜底
+app.rag.fallback-to-keyword=true]
+        FALLBACK --> |补充| COLS[columns 列表]
+        FALLBACK --> |补充| JOINS[join_edges 列表]
+
+        CTX --> SCORER[TableRelevanceScorer
+多维度二次加权排序]
+        SCORER --> |权重组合| RANKED[排序后 MetadataContext]
+        SCORER -.->|权重配置| SCORER_WEIGHTS[维度权重:
+术语引用 25% / 示例引用 25%
+表类型 15% / 元数据质量 15%
+向量相似度 20%]
+
+        RANKED --> PROMPT[PromptBuilder → LLM]
+    end
+
+</pre>
+<h3 id="TableRelevanceScorer二次排序" tabindex="-1">TableRelevanceScorer 二次排序</h3>
+<p>在向量检索和关键词兜底后，<code>MetadataService</code> 调用 <code>TableRelevanceScorer.rankTables()</code> 对候选表进行多维度加权排序：</p>
+<table>
+<thead>
+<tr>
+<th>评分维度</th>
+<th>权重</th>
+<th>计算方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WEIGHT_GLOSSARY_REFERENCE</code></td>
+<td>25%</td>
+<td>匹配到的术语在 glossary 中出现的表引用频次</td>
+</tr>
+<tr>
+<td><code>WEIGHT_EXAMPLE_REFERENCE</code></td>
+<td>25%</td>
+<td>匹配到的 SQL 示例中 FROM/JOIN 引用的表频次</td>
+</tr>
+<tr>
+<td><code>WEIGHT_TABLE_TYPE</code></td>
+<td>15%</td>
+<td>事实表（fact_）vs 维度表（dim_）的类型权重</td>
+</tr>
+<tr>
+<td><code>WEIGHT_METADATA_QUALITY</code></td>
+<td>15%</td>
+<td>表的描述完整度 + 列注释覆盖率</td>
+</tr>
+<tr>
+<td><code>WEIGHT_VECTOR_SIMILARITY</code></td>
+<td>20%</td>
+<td>原始 pgvector cosine 相似度归一化</td>
+</tr>
+</tbody>
+</table>
+<h3 id="RAG配置参数" tabindex="-1">RAG 配置参数</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app.rag.similarity-threshold-example</code></td>
+<td>0.65</td>
+<td>SQL 示例向量相似度阈值</td>
+</tr>
+<tr>
+<td><code>app.rag.similarity-threshold-glossary</code></td>
+<td>0.60</td>
+<td>术语向量相似度阈值</td>
+</tr>
+<tr>
+<td><code>app.rag.similarity-threshold-table</code></td>
+<td>0.55</td>
+<td>表描述向量相似度阈值</td>
+</tr>
+<tr>
+<td><code>app.rag.top-k-example</code></td>
+<td>5</td>
+<td>最多返回 N 个 SQL 示例</td>
+</tr>
+<tr>
+<td><code>app.rag.top-k-glossary</code></td>
+<td>5</td>
+<td>最多返回 N 个术语</td>
+</tr>
+<tr>
+<td><code>app.rag.top-k-table</code></td>
+<td>3</td>
+<td>最多返回 N 个表</td>
+</tr>
+<tr>
+<td><code>app.rag.fallback-to-keyword</code></td>
+<td>true</td>
+<td>向量结果不足时降级为关键词检索</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="8-元数据发布生命周期与SQL校验" tabindex="-1">8. 元数据发布生命周期与 SQL 校验</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> draft: DDL 解析完成
+    draft --> published: DDL 确认入库<br/>(DDLParserService.confirmDdl)
+    published --> draft: 手动撤销发布
+    published --> [*]: 删除表
+
+    note right of draft
+        仅 ADMIN 可查看
+        不可用于 RAG 检索
+        LLM prompt 不可引用
+    end note
+
+    note right of published
+        所有角色可用
+        RAG 向量化自动触发
+        LLM prompt 可引用
+        SqlMetadataValidator 基于此校验
+    end note
+
+</pre>
+<h3 id="8-2发布流程" tabindex="-1">8.2 发布流程</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>触发操作</th>
+<th>状态变更</th>
+<th>副作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DDL 上传</td>
+<td><code>MetadataController.parseDdl()</code></td>
+<td>—</td>
+<td><code>DDLParserService.parse()</code> 解析 PostgreSQL COMMENT ON 格式</td>
+</tr>
+<tr>
+<td>DDL 确认</td>
+<td><code>MetadataController.confirmDdl()</code></td>
+<td><code>draft</code> → <code>published</code></td>
+<td>触发 <code>EmbeddingService.embedAndStoreAsync()</code> 异步向量化</td>
+</tr>
+<tr>
+<td>表/列编辑</td>
+<td><code>MetadataController.updateTable()</code> / <code>updateColumn()</code></td>
+<td>保持当前状态</td>
+<td>若为 <code>published</code>，异步更新向量存储</td>
+</tr>
+<tr>
+<td>撤销发布</td>
+<td>管理端手动操作</td>
+<td><code>published</code> → <code>draft</code></td>
+<td>元数据仍然保留，但不再参与 RAG 检索</td>
+</tr>
+</tbody>
+</table>
+<h3 id="8-1SqlMetadataValidator校验流程" tabindex="-1">8.1 SqlMetadataValidator 校验流程</h3>
+<p><code>SqlMetadataValidator</code> 在 LLM 生成 SQL 后、SqlGuardService 执行前对 SQL 进行元数据级别的校验：</p>
+<pre class="ascii-art"><code>LLM 生成 SQL → SqlMetadataValidator.validate(sql, datasourceId)
+  ├── CCJSqlParserUtil.parse(sql) → AST
+  ├── extractTableNames() → 提取所有 FROM/JOIN 引用的表
+  │   └── metaTableMapper.findPublishedByNames(tableNames)
+  │       └── 不存在的表 → throw SQL_GUARD_BLOCKED
+  ├── extractColumnReferences() → 提取 SELECT/WHERE/GROUP BY 引用的列
+  │   └── metaColumnMapper.findByTableIdsAndNames(tableIds, columnNames)
+  │       └── 不存在的列 → throw SQL_GUARD_BLOCKED
+  └── 校验通过 → 进入 SqlGuardService.validate()
+</code></pre>
+<blockquote>
+<p><strong>设计决策</strong>：将&quot;表/列是否存在&quot;的校验从 LLM prompt 层面提升到代码层面强制执行。LLM 可能产生幻觉（编造表名/列名），SqlMetadataValidator 在 AST 层面兜底拦截，确保只执行引用合法元数据的 SQL。</p>
+</blockquote>
+<hr>
+<h2 id="9-权限架构" tabindex="-1">9. 权限架构</h2>
+<pre class="mermaid">
+graph TD
+    subgraph "JWT Token Claims"
+        JWT_C[JWT Payload]
+        JWT_C --> C1[userId: Integer]
+        JWT_C --> C2[username: String]
+        JWT_C --> C3["role: ADMIN | MANAGER | USER"]
+        JWT_C --> C4[orgId: defaultOrgId]
+        JWT_C --> C5[jti: sessionJti UUID]
+    end
+
+    subgraph "认证层"
+        LOGIN[POST /api/v1/auth/login]
+        LOGIN --> BCrypt[BCryptPasswordEncoder.matches]
+        BCrypt --> |通过| JWT_GEN[JwtUtil.generateToken
+签发 JWT + jti]
+        JWT_GEN --> REDIS_S["Redis SET
+t2r:session:userId = jti|timestamp
+TTL 86400s"]
+        LOGOUT[POST /api/v1/auth/logout]
+        LOGOUT --> REDIS_BL["Redis SET
+t2r:blacklist:token = 1
+直接失效对应 token"]
+    end
+
+    subgraph "请求验证"
+        REQ[HTTP 请求]
+        REQ --> EXTRACT[extractToken: Bearer token]
+        EXTRACT --> BL_CHECK["Redis EXISTS
+t2r:blacklist:token"]
+        BL_CHECK --> |在黑名单| REJECT[401 token 已失效]
+        BL_CHECK --> |不在| JWT_V[JwtUtil.validateToken]
+        JWT_V --> |无效| REJECT2[401 token 无效或过期]
+        JWT_V --> |有效| SESSION["Redis GET
+t2r:session:userId"]
+        SESSION --> JTI_MATCH["token.jti == session.jti?"]
+        JTI_MATCH --> |不匹配| REJECT3[401 账号已在其他设备登录]
+        JTI_MATCH --> |匹配| SET_AUTH[设置 SecurityContext + TraceContext]
+    end
+
+    subgraph "角色权限"
+        ROLE_ADMIN[ADMIN: 全部权限]
+        ROLE_MANAGER[MANAGER: 管理域访问 + 用户管理 + 组织查看 + 审计]
+        ROLE_USER[USER: 仅查询域
+SQL 字段脱敏]
+    end
+
+    subgraph "组织范围权限"
+        USER_CTX[UserService.resolveAccessibleOrgIds]
+        USER_CTX --> SYS_USER_ORG[sys_user_org 表
+用户-组织关联]
+        SYS_USER_ORG --> SUBTREE[OrgService.resolveSubtreeIds
+递归展开子树]
+        SUBTREE --> INTERSECT[交集: 用户可访问 ∩ 子树范围]
+        INTERSECT --> ALLOWED[allowedOrgIds]
+    end
+
+    subgraph "SQL 组织范围校验"
+        SGS_ORG[SqlGuardService.validateOrgScope]
+        SGS_ORG --> PARSE[CCJSqlParserUtil.parse]
+        PARSE --> CHECK_TABLE[检查是否引用了
+fact_* 表或 dim_org]
+        CHECK_TABLE --> |是| CHECK_WHERE[检查 WHERE 条件
+org_id IN allowedIds]
+        CHECK_WHERE --> |不匹配| BLOCK[SQL_GUARD_BLOCKED
+SQL 包含未授权组织范围]
+        CHECK_WHERE --> |匹配| PASS[通过]
+        CHECK_TABLE --> |否| PASS2[跳过组织范围校验]
+    end
+
+    subgraph "前端权限控制"
+        AG_C[AuthGuard.tsx]
+        AG_C --> |无 requireAdmin| ALLOW_MGR[MANAGER+ 可访问]
+        AG_C --> |requireAdmin=true| ALLOW_ADMIN[仅 ADMIN 可访问]
+        QC_MASK[QueryController.maskSqlIfNeeded
+非 ADMIN 移除 sql 字段]
+    end
+
+    SET_AUTH --> ROLE_ADMIN
+    SET_AUTH --> ROLE_MANAGER
+    SET_AUTH --> ROLE_USER
+    ROLE_USER --> INTERSECT
+    ROLE_MANAGER --> INTERSECT
+    ROLE_ADMIN --> INTERSECT
+
+</pre>
+<h3 id="权限四层模型" tabindex="-1">权限四层模型</h3>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>机制</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. 认证</strong></td>
+<td>JWT + Redis Session JTI</td>
+<td>签发时记录 jti，每次请求校验 token.jti == session.jti，登出时黑名单 token</td>
+</tr>
+<tr>
+<td><strong>2. 角色</strong></td>
+<td>ADMIN / MANAGER / USER</td>
+<td>SecurityConfig URL 级别控制 + @PreAuthorize 方法级控制</td>
+</tr>
+<tr>
+<td><strong>3. 组织范围</strong></td>
+<td>sys_user_org + org_tree 递归</td>
+<td>用户可访问的 org 集合 ∩ 查询 org 的子树范围</td>
+</tr>
+<tr>
+<td><strong>4. SQL 范围</strong></td>
+<td>SqlGuardService.validateOrgScope</td>
+<td>AST 级别校验 SQL WHERE 中 org_id 在允许范围内</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="10-多数据源架构" tabindex="-1">10. 多数据源架构</h2>
+<pre class="mermaid">
+graph TB
+    subgraph APP["Spring Boot Application"]
+        subgraph BIZ["BusinessDataSource Config"]
+            BDS_H["HikariCP
+read-only: true
+pool: BizPool (max 5)"]
+            BDS_JDBC["NamedParameterJdbcTemplate"]
+            BDS_H --> BDS_JDBC
+        end
+        subgraph META["MetaDataSource Config"]
+            MDS_H["HikariCP
+read-only: false
+pool: MetaPool (max 5)"]
+            MDS_MB["MyBatis-Plus
+SqlSessionFactory
+mapper/meta/*.xml"]
+            MDS_H --> MDS_MB
+        end
+        subgraph VEC["VectorDataSource Config"]
+            VDS_H["HikariCP
+pool: VecPool (max 5)"]
+            VDS_MB["MyBatis-Plus
+SqlSessionFactory
+mapper/vector/*.xml"]
+            VDS_TH["PgVectorTypeHandler
+float[] ↔ vector"]
+            VDS_H --> VDS_MB
+            VDS_MB --> VDS_TH
+        end
+        subgraph RED["Redis Config"]
+            RED_L["Lettuce 连接池
+max-active: 8"]
+            RED_KEYS["Key Patterns:
+t2r:cache:query:*
+t2r:session:*
+t2r:ratelimit:*
+t2r:blacklist:*"]
+            RED_TTL["TTLs:
+query-result: 1800s
+session: 86400s
+rate-limit: 60s"]
+            RED_L --> RED_KEYS
+            RED_KEYS --> RED_TTL
+        end
+    end
+
+    BIZ --> PG1[("PostgreSQL
+text2report
+(READ-ONLY)
+
+Tables:
+dim_org, dim_product
+dim_channel
+fact_gross_profit_detail")]
+    META --> PG2[("PostgreSQL
+text2report-meta
+(READ-WRITE)
+
+Tables:
+meta_table/column
+meta_glossary/join_edge
+meta_sql_example
+meta_datasource/ddl_upload
+org_tree, dim_org(copy)
+sys_user, sys_user_org
+audit_query_logs")]
+    VEC --> PG3[("PostgreSQL + pgvector
+database: postgres
+
+Tables:
+meta_embedding
+  vector(1024)
+  HNSW cosine index
+  source_type/id")]
+    RED --> REDIS[("Redis 7 (Docker)
+host: Alibaba Cloud
+port: 6379
+
+Uses:
+查询结果缓存
+JWT 黑名单
+会话 JTI 存储
+滑动窗口限流计数")]
+
+</pre>
+<h3 id="数据源对比" tabindex="-1">数据源对比</h3>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>businessDataSource</th>
+<th>metaDataSource</th>
+<th>vectorDataSource</th>
+<th>Redis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>数据库</strong></td>
+<td>text2report</td>
+<td>text2report-meta</td>
+<td>postgres</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>类型</strong></td>
+<td>PostgreSQL</td>
+<td>PostgreSQL</td>
+<td>PostgreSQL + pgvector</td>
+<td>Redis 7</td>
+</tr>
+<tr>
+<td><strong>读写</strong></td>
+<td>只读 (HikariCP read-only=true)</td>
+<td>读写</td>
+<td>读写</td>
+<td>读写</td>
+</tr>
+<tr>
+<td><strong>连接池</strong></td>
+<td>HikariCP, max=5, min=2</td>
+<td>HikariCP, max=5, min=2</td>
+<td>HikariCP, max=5, min=1</td>
+<td>Lettuce, max=8</td>
+</tr>
+<tr>
+<td><strong>访问方式</strong></td>
+<td>NamedParameterJdbcTemplate</td>
+<td>MyBatis-Plus SqlSession</td>
+<td>MyBatis-Plus SqlSession</td>
+<td>StringRedisTemplate</td>
+</tr>
+<tr>
+<td><strong>用途</strong></td>
+<td>SELECT 查询</td>
+<td>元数据/用户/审计 CRUD</td>
+<td>pgvector 向量存储/检索</td>
+<td>缓存/会话/限流</td>
+</tr>
+<tr>
+<td><strong>超时</strong></td>
+<td>30s</td>
+<td>30s</td>
+<td>30s</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-安全防护体系" tabindex="-1">11. 安全防护体系</h2>
+<h3 id="11-1纵深防御十二层模型" tabindex="-1">11.1 纵深防御十二层模型</h3>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>组件</th>
+<th>安全机制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Layer 1</td>
+<td>HikariCP</td>
+<td><code>read-only=true</code> 连接池级写保护</td>
+</tr>
+<tr>
+<td>Layer 2</td>
+<td>SqlGuardService</td>
+<td>AST 级非 SELECT 拦截</td>
+</tr>
+<tr>
+<td>Layer 3</td>
+<td>SqlGuardService</td>
+<td>系统 schema（pg_catalog/information_schema）拦截</td>
+</tr>
+<tr>
+<td>Layer 4</td>
+<td>SqlGuardService</td>
+<td>危险函数（PostgresRiskCatalog 全面阻断）拦截</td>
+</tr>
+<tr>
+<td>Layer 5</td>
+<td>SqlGuardService</td>
+<td><code>SELECT *</code> 拦截（可配置）</td>
+</tr>
+<tr>
+<td>Layer 6</td>
+<td>SqlGuardService</td>
+<td><code>org_id</code> 组织范围 AST 级校验</td>
+</tr>
+<tr>
+<td>Layer 7</td>
+<td>SqlGuardService</td>
+<td><code>LIMIT</code> 自动注入（默认 1000）</td>
+</tr>
+<tr>
+<td>Layer 8</td>
+<td>JDBC</td>
+<td><code>queryTimeout=30s</code> 查询超时</td>
+</tr>
+<tr>
+<td>Layer 9</td>
+<td>RateLimitFilter</td>
+<td>Redis Sorted Set 滑动窗口限流</td>
+</tr>
+<tr>
+<td>Layer 10</td>
+<td>JwtTokenResolver</td>
+<td>Cookie 优先 + Bearer 降级的统一 token 提取（allowBearerToken 特性开关）</td>
+</tr>
+<tr>
+<td>Layer 11</td>
+<td>SpaCsrfTokenRequestHandler</td>
+<td>CSRF 令牌保护（SPA 适配）</td>
+</tr>
+<tr>
+<td>Layer 12</td>
+<td>AuthCookieProperties</td>
+<td>JWT cookie 安全配置（domain/SameSite/Secure/Path）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="11-2过滤器链安全体系" tabindex="-1">11.2 过滤器链安全体系</h3>
+<table>
+<thead>
+<tr>
+<th>过滤器</th>
+<th>顺序</th>
+<th>职责</th>
+<th>安全效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TraceFilter</code></td>
+<td>1</td>
+<td>UUID v4 建立 requestId → TraceContext ThreadLocal</td>
+<td>全链路追踪，异常定位</td>
+</tr>
+<tr>
+<td><code>JwtAuthFilter</code></td>
+<td>2</td>
+<td>Cookie 优先（JwtTokenResolver）→ Redis 黑名单检查 → JWT 验证 → 会话 JTI 匹配 → TraceContext 填充</td>
+<td>认证 + 防重放 + 单设备登录</td>
+</tr>
+<tr>
+<td><code>JwtTokenResolver</code></td>
+<td>(JwtAuthFilter 内调用)</td>
+<td>Cookie(<code>__Host-t2r_access</code>) 优先 → Authorization Header Bearer 降级（allowBearerToken 特性开关控制）</td>
+<td>统一 token 提取，减少攻击面</td>
+</tr>
+<tr>
+<td><code>CsrfFilter</code></td>
+<td>3</td>
+<td>Spring Security CSRF 保护（SpaCsrfTokenRequestHandler）</td>
+<td>CSRF 攻击防护</td>
+</tr>
+<tr>
+<td><code>RequestLoggingFilter</code></td>
+<td>4</td>
+<td>method/URI/status/duration 日志</td>
+<td>运维可观测性</td>
+</tr>
+<tr>
+<td><code>RateLimitFilter</code></td>
+<td>5</td>
+<td>Redis Sorted Set 滑动窗口计数，按角色分级</td>
+<td>防 DDoS / 暴力破解</td>
+</tr>
+</tbody>
+</table>
+<h3 id="11-3各角色限流配置" tabindex="-1">11.3 各角色限流配置</h3>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>每分钟限制</th>
+<th>配置项</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>匿名用户</td>
+<td>10 req/min</td>
+<td><code>app.rate-limit.anonymous-per-minute</code></td>
+</tr>
+<tr>
+<td>USER</td>
+<td>30 req/min</td>
+<td><code>app.rate-limit.user-per-minute</code></td>
+</tr>
+<tr>
+<td>ADMIN</td>
+<td>60 req/min</td>
+<td><code>app.rate-limit.admin-per-minute</code></td>
+</tr>
+<tr>
+<td>查询接口</td>
+<td>10 req/min</td>
+<td><code>app.rate-limit.query-per-minute</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="11-4SQL安全校验完整覆盖" tabindex="-1">11.4 SQL 安全校验完整覆盖</h3>
+<table>
+<thead>
+<tr>
+<th>校验维度</th>
+<th>实现方式</th>
+<th>代码位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>语句类型</td>
+<td>JSqlParser AST：instanceof Insert/Update/Delete/Drop/Truncate/Merge/Execute/Alter</td>
+<td><code>SqlGuardService.validateStatement()</code></td>
+</tr>
+<tr>
+<td>系统 Schema</td>
+<td>Table.getSchemaName() 匹配 blocked_schemas</td>
+<td><code>SqlGuardService.validateFromItem()</code></td>
+</tr>
+<tr>
+<td>危险函数</td>
+<td>Function AST 节点名匹配 PostgresRiskCatalog 阻断清单</td>
+<td><code>SqlGuardService.validateExpression()</code></td>
+</tr>
+<tr>
+<td>SELECT *</td>
+<td>AllColumns / AllTableColumns AST 节点检测</td>
+<td><code>SqlGuardService.validatePlainSelect()</code></td>
+</tr>
+<tr>
+<td>CTE 递归</td>
+<td>WithItem.getSelect() 递归校验</td>
+<td><code>SqlGuardService.validatePlainSelect()</code></td>
+</tr>
+<tr>
+<td>子查询</td>
+<td>ParenthesedSelect / LateralSubSelect 递归校验</td>
+<td><code>SqlGuardService.validateFromItem()</code></td>
+</tr>
+<tr>
+<td>WHERE 表达式</td>
+<td>BinaryExpression 左右递归深入</td>
+<td><code>SqlGuardService.validateExpression()</code></td>
+</tr>
+<tr>
+<td>EXISTS/IN/LIKE 子查询</td>
+<td>对应 AST 节点递归</td>
+<td><code>SqlGuardService.validateExpression()</code></td>
+</tr>
+<tr>
+<td>LIMIT 注入</td>
+<td>无 LIMIT 则注入 Limit(LongValue(1000))</td>
+<td><code>SqlGuardService.injectLimit()</code></td>
+</tr>
+<tr>
+<td>组织范围</td>
+<td>WHERE org_id IN (…) 值校验</td>
+<td><code>SqlGuardService.validateOrgScope()</code></td>
+</tr>
+<tr>
+<td>SQL 长度</td>
+<td>超过 10000 字符拒绝</td>
+<td><code>SqlGuardService.validateAndInject()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="11-5LLM数据隔离" tabindex="-1">11.5 LLM 数据隔离</h3>
+<pre class="ascii-art"><code>OrchestratorService.buildResult()
+  │
+  ├── ResultProfile {rowCount, columnCount, columnNames[], hasData}
+  │   └── llmService.summarizeResults(question, sql, resultProfile)
+  │       └── ✅ 仅传统计画像，不含业务数据行
+  │
+  └── TableData {columns[], rows[][]}
+      └── QueryResultDTO.table → 直接返回前端
+          └── ❌ rows[][] 禁止传入任何 LLM 方法
+</code></pre>
+<h3 id="11-6审计覆盖" tabindex="-1">11.6 审计覆盖</h3>
+<table>
+<thead>
+<tr>
+<th>审计时机</th>
+<th>审计状态</th>
+<th>记录内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>查询开始</td>
+<td><code>running</code></td>
+<td>requestId, userId, orgId, question</td>
+</tr>
+<tr>
+<td>查询成功</td>
+<td><code>success</code></td>
+<td>+ sql, executionMs, rowCount, confidence, summary</td>
+</tr>
+<tr>
+<td>缓存命中</td>
+<td><code>success</code></td>
+<td>+ sql, executionMs=0, rowCount (来自缓存)</td>
+</tr>
+<tr>
+<td>Guard 拦截</td>
+<td><code>blocked</code></td>
+<td>+ errorMessage</td>
+</tr>
+<tr>
+<td>查询失败</td>
+<td><code>error</code></td>
+<td>+ errorMessage</td>
+</tr>
+</tbody>
+</table>
+<p>所有审计写入通过 <code>@Async</code> 异步执行，不阻塞查询响应路径。</p>
+<hr>
+<h2 id="12-元数据库Schema" tabindex="-1">12. 元数据库 Schema</h2>
+<h3 id="12-1完整表清单" tabindex="-1">12.1 完整表清单</h3>
+<table>
+<thead>
+<tr>
+<th>表名</th>
+<th>数据库</th>
+<th>用途</th>
+<th>核心字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dim_org</code></td>
+<td>text2report</td>
+<td>组织维度</td>
+<td>id, parent_id, org_name, org_level, is_active</td>
+</tr>
+<tr>
+<td><code>dim_product</code></td>
+<td>text2report</td>
+<td>产品维度</td>
+<td>id, product_name, category</td>
+</tr>
+<tr>
+<td><code>dim_channel</code></td>
+<td>text2report</td>
+<td>渠道维度</td>
+<td>id, channel_name</td>
+</tr>
+<tr>
+<td><code>fact_gross_profit_detail</code></td>
+<td>text2report</td>
+<td>毛利事实表</td>
+<td>id, period_month, org_id, product_id, channel_id, revenue, cost, gross_profit</td>
+</tr>
+<tr>
+<td><code>meta_table</code></td>
+<td>text2report-meta</td>
+<td>表元数据</td>
+<td>id, schema_name, table_name, label, description, datasource_id, publish_status</td>
+</tr>
+<tr>
+<td><code>meta_column</code></td>
+<td>text2report-meta</td>
+<td>字段元数据</td>
+<td>id, table_id, column_name, comment, data_type, is_pk, is_fk, is_dimension, is_measure</td>
+</tr>
+<tr>
+<td><code>meta_glossary</code></td>
+<td>text2report-meta</td>
+<td>业务术语</td>
+<td>id, term, definition, sql_fragment, aliases</td>
+</tr>
+<tr>
+<td><code>meta_join_edge</code></td>
+<td>text2report-meta</td>
+<td>JOIN 关系图</td>
+<td>id, left_table, right_table, left_col, right_col, join_type, description</td>
+</tr>
+<tr>
+<td><code>meta_sql_example</code></td>
+<td>text2report-meta</td>
+<td>问答示例</td>
+<td>id, question, sql, org_scope, enabled</td>
+</tr>
+<tr>
+<td><code>meta_datasource</code></td>
+<td>text2report-meta</td>
+<td>数据源配置</td>
+<td>id, name, db_type, jdbc_url, read_only, is_active</td>
+</tr>
+<tr>
+<td><code>meta_ddl_upload</code></td>
+<td>text2report-meta</td>
+<td>DDL 上传审计</td>
+<td>id, content, parsed_at, confirmed, confirmed_by</td>
+</tr>
+<tr>
+<td><code>meta_embedding</code></td>
+<td>vectorDataSource</td>
+<td>向量存储</td>
+<td>id, source_type, source_id, content_text, vector(1024), model_version</td>
+</tr>
+<tr>
+<td><code>org_tree</code></td>
+<td>text2report-meta</td>
+<td>组织树</td>
+<td>id, parent_id, name, level, path, is_active</td>
+</tr>
+<tr>
+<td><code>sys_user</code></td>
+<td>text2report-meta</td>
+<td>用户</td>
+<td>id, username, password_hash, display_name, role, default_org_id, is_active</td>
+</tr>
+<tr>
+<td><code>sys_user_org</code></td>
+<td>text2report-meta</td>
+<td>用户-组织关联</td>
+<td>id, user_id, org_id, scope_type</td>
+</tr>
+<tr>
+<td><code>audit_query_logs</code></td>
+<td>text2report-meta</td>
+<td>查询审计</td>
+<td>id, request_id, user_id, org_id, question, sql, execution_ms, row_count, confidence, status, error_message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-2核心表详细说明" tabindex="-1">12.2 核心表详细说明</h3>
+<h4>meta_embedding (向量存储)</h4>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>SERIAL</td>
+<td>主键</td>
+</tr>
+<tr>
+<td><code>source_type</code></td>
+<td>VARCHAR(50)</td>
+<td>来源类型：sql_example / glossary / table_description</td>
+</tr>
+<tr>
+<td><code>source_id</code></td>
+<td>INTEGER</td>
+<td>关联来源表的 ID</td>
+</tr>
+<tr>
+<td><code>content_text</code></td>
+<td>TEXT</td>
+<td>向量化的原始文本</td>
+</tr>
+<tr>
+<td><code>vector</code></td>
+<td>vector(1024)</td>
+<td>BGE-M3 生成的 1024 维向量</td>
+</tr>
+<tr>
+<td><code>model_version</code></td>
+<td>VARCHAR(100)</td>
+<td>生成向量的模型版本（如 bge-m3）</td>
+</tr>
+<tr>
+<td><code>created_at</code> / <code>updated_at</code></td>
+<td>TIMESTAMP</td>
+<td>时间戳</td>
+</tr>
+</tbody>
+</table>
+<p>索引：<code>HNSW</code> 索引，<code>cosine</code> 距离算子</p>
+<h4>audit_query_logs (审计日志)</h4>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>BIGSERIAL</td>
+<td>主键</td>
+</tr>
+<tr>
+<td><code>request_id</code></td>
+<td>VARCHAR(36)</td>
+<td>UUID v4 请求 ID</td>
+</tr>
+<tr>
+<td><code>user_id</code></td>
+<td>INTEGER</td>
+<td>用户 ID</td>
+</tr>
+<tr>
+<td><code>username</code></td>
+<td>VARCHAR(100)</td>
+<td>用户名</td>
+</tr>
+<tr>
+<td><code>org_id</code></td>
+<td>INTEGER</td>
+<td>组织 ID</td>
+</tr>
+<tr>
+<td><code>question</code></td>
+<td>TEXT</td>
+<td>原始问题</td>
+</tr>
+<tr>
+<td><code>sql</code></td>
+<td>TEXT</td>
+<td>执行的 SQL</td>
+</tr>
+<tr>
+<td><code>execution_ms</code></td>
+<td>BIGINT</td>
+<td>执行耗时（毫秒）</td>
+</tr>
+<tr>
+<td><code>row_count</code></td>
+<td>INTEGER</td>
+<td>返回行数</td>
+</tr>
+<tr>
+<td><code>confidence</code></td>
+<td>DECIMAL(3,2)</td>
+<td>置信度</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>VARCHAR(20)</td>
+<td>running / success / blocked / error</td>
+</tr>
+<tr>
+<td><code>error_message</code></td>
+<td>TEXT</td>
+<td>错误信息</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>TEXT</td>
+<td>查询摘要</td>
+</tr>
+<tr>
+<td><code>created_at</code> / <code>updated_at</code></td>
+<td>TIMESTAMP</td>
+<td>时间戳</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="13-API接口清单" tabindex="-1">13. API 接口清单</h2>
+<h3 id="13-1查询域(QueryDomain)" tabindex="-1">13.1 查询域 (Query Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/query</code></td>
+<td>POST</td>
+<td>提交自然语言查询</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/history</code></td>
+<td>GET</td>
+<td>查询历史（分页+多维筛选）</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/history/{requestId}</code></td>
+<td>GET</td>
+<td>历史详情</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/{requestId}/feedback</code></td>
+<td>POST</td>
+<td>提交反馈 (good/bad)</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/favorites</code></td>
+<td>GET</td>
+<td>获取收藏列表</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/{requestId}/favorite</code></td>
+<td>POST</td>
+<td>添加到收藏</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/query/{requestId}/favorite</code></td>
+<td>DELETE</td>
+<td>移除收藏</td>
+<td>已认证</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-2元数据管理域(MetadataDomain)" tabindex="-1">13.2 元数据管理域 (Metadata Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/metadata/ddl/parse</code></td>
+<td>POST</td>
+<td>DDL 解析</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/ddl/confirm</code></td>
+<td>POST</td>
+<td>DDL 确认入库</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/tables</code></td>
+<td>GET</td>
+<td>表列表</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/tables/{id}</code></td>
+<td>GET</td>
+<td>表详情</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/tables/{id}</code></td>
+<td>PUT</td>
+<td>更新表 label/description</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/tables/{id}/columns</code></td>
+<td>GET</td>
+<td>表的列列表</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/columns/{id}</code></td>
+<td>PUT</td>
+<td>更新列信息</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/glossary</code></td>
+<td>GET</td>
+<td>术语列表（分页）</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/glossary</code></td>
+<td>POST</td>
+<td>新增术语</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/glossary/{id}</code></td>
+<td>PUT</td>
+<td>更新术语</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/glossary/{id}</code></td>
+<td>DELETE</td>
+<td>删除术语</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/joins</code></td>
+<td>GET</td>
+<td>JOIN 边列表</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/joins</code></td>
+<td>POST</td>
+<td>新增 JOIN 边</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/joins/{id}</code></td>
+<td>PUT</td>
+<td>更新 JOIN 边</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/joins/{id}</code></td>
+<td>DELETE</td>
+<td>删除 JOIN 边</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/examples</code></td>
+<td>GET</td>
+<td>SQL 示例列表（分页）</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/examples</code></td>
+<td>POST</td>
+<td>新增 SQL 示例</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/examples/{id}</code></td>
+<td>PUT</td>
+<td>更新 SQL 示例</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/examples/{id}</code></td>
+<td>DELETE</td>
+<td>删除 SQL 示例</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/metadata/upload-history</code></td>
+<td>GET</td>
+<td>DDL 上传历史</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-3组织机构域(OrganizationDomain)" tabindex="-1">13.3 组织机构域 (Organization Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/orgs/tree</code></td>
+<td>GET</td>
+<td>完整组织树</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/my-tree</code></td>
+<td>GET</td>
+<td>按用户权限裁剪的组织树</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/subtree-ids</code></td>
+<td>GET</td>
+<td>递归展开子树 ID 列表</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/path</code></td>
+<td>GET</td>
+<td>组织路径</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/users</code></td>
+<td>GET</td>
+<td>组织下的用户列表</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/users</code></td>
+<td>POST</td>
+<td>给组织添加用户</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/users/{userId}/scope</code></td>
+<td>PUT</td>
+<td>修改用户组织权限范围</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/{id}/users/{userId}</code></td>
+<td>DELETE</td>
+<td>移除用户组织关联</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/sync</code></td>
+<td>POST</td>
+<td>从业务库同步组织</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/orgs/sync/status</code></td>
+<td>GET</td>
+<td>同步状态</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-4用户管理域(UserDomain)" tabindex="-1">13.4 用户管理域 (User Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/users</code></td>
+<td>GET</td>
+<td>用户列表（分页+筛选）</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users</code></td>
+<td>POST</td>
+<td>创建用户</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}</code></td>
+<td>GET</td>
+<td>用户详情</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}</code></td>
+<td>PUT</td>
+<td>更新用户</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/deactivate</code></td>
+<td>PUT</td>
+<td>停用用户</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/activate</code></td>
+<td>PUT</td>
+<td>启用用户</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/password</code></td>
+<td>PUT</td>
+<td>修改密码</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/orgs</code></td>
+<td>GET</td>
+<td>用户组织授权列表</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/orgs</code></td>
+<td>POST</td>
+<td>授予组织访问权限</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/users/{id}/orgs/{orgId}</code></td>
+<td>DELETE</td>
+<td>撤销组织访问权限</td>
+<td>MANAGER+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-5认证域(AuthDomain)" tabindex="-1">13.5 认证域 (Auth Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/auth/login</code></td>
+<td>POST</td>
+<td>登录（返回 JWT + refreshToken）</td>
+<td>公开</td>
+</tr>
+<tr>
+<td><code>/api/v1/auth/logout</code></td>
+<td>POST</td>
+<td>登出（token 加入黑名单）</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/auth/me</code></td>
+<td>GET</td>
+<td>获取当前用户信息</td>
+<td>已认证</td>
+</tr>
+<tr>
+<td><code>/api/v1/auth/refresh</code></td>
+<td>POST</td>
+<td>刷新 token</td>
+<td>公开</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-6Embedding管理域" tabindex="-1">13.6 Embedding 管理域</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/embeddings/sync</code></td>
+<td>POST</td>
+<td>全量同步向量（sql_example + glossary + table_description）</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/embeddings/search</code></td>
+<td>POST</td>
+<td>向量相似性搜索</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/embeddings/stats</code></td>
+<td>GET</td>
+<td>向量存储统计</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-7审计域(AuditDomain)" tabindex="-1">13.7 审计域 (Audit Domain)</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/audit/logs</code></td>
+<td>GET</td>
+<td>审计日志（分页+多维筛选）</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/audit/logs/{id}</code></td>
+<td>GET</td>
+<td>审计日志详情</td>
+<td>MANAGER+</td>
+</tr>
+<tr>
+<td><code>/api/v1/audit/stats</code></td>
+<td>GET</td>
+<td>审计统计（聚合）</td>
+<td>MANAGER+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-8数据源管理域" tabindex="-1">13.8 数据源管理域</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/datasources</code></td>
+<td>GET</td>
+<td>数据源列表</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/datasources</code></td>
+<td>POST</td>
+<td>新增数据源</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/datasources/{id}</code></td>
+<td>PUT</td>
+<td>更新数据源</td>
+<td>ADMIN</td>
+</tr>
+<tr>
+<td><code>/api/v1/datasources/{id}</code></td>
+<td>DELETE</td>
+<td>删除数据源</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-9健康检查" tabindex="-1">13.9 健康检查</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>方法</th>
+<th>说明</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/health</code></td>
+<td>GET</td>
+<td>健康检查</td>
+<td>公开</td>
+</tr>
+<tr>
+<td><code>/api/v1/health/details</code></td>
+<td>GET</td>
+<td>详细健康信息</td>
+<td>ADMIN</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="14-Prompt模板体系" tabindex="-1">14. Prompt 模板体系</h2>
+<h3 id="14-1模板文件清单" tabindex="-1">14.1 模板文件清单</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>用途</th>
+<th>调用方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/prompts/sql_generation_v1.txt</code></td>
+<td>SQL 生成主模板</td>
+<td><code>PromptBuilder.buildSqlGenerationPrompt()</code> → <code>OrchestratorService.executeWithRetries()</code></td>
+</tr>
+<tr>
+<td><code>/prompts/sql_repair_v1.txt</code></td>
+<td>SQL 修复模板</td>
+<td><code>LLMService.repairSQL()</code> → <code>OrchestratorService</code> 重试流程</td>
+</tr>
+<tr>
+<td><code>/prompts/result_summary_v1.txt</code></td>
+<td>结果摘要模板</td>
+<td><code>LLMService.summarizeResults()</code> → <code>OrchestratorService.buildResult()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="14-2模板占位符说明" tabindex="-1">14.2 模板占位符说明</h3>
+<h4>sql_generation_v1.txt</h4>
+<table>
+<thead>
+<tr>
+<th>占位符</th>
+<th>填充来源</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{dialect}</code></td>
+<td>硬编码 <code>&quot;postgresql&quot;</code></td>
+<td>数据库方言声明</td>
+</tr>
+<tr>
+<td><code>{org_context}</code></td>
+<td><code>OrgService.resolveOrgPath()</code></td>
+<td>组织路径文本描述</td>
+</tr>
+<tr>
+<td><code>{org_ids}</code></td>
+<td><code>OrgService.resolveSubtreeIds()</code></td>
+<td>逗号分隔的组织 ID 列表</td>
+</tr>
+<tr>
+<td><code>{metadata_json}</code></td>
+<td><code>MetadataService.buildMetadataJson()</code></td>
+<td>JSON 格式的元数据（表/列/术语/JOIN/示例）</td>
+</tr>
+<tr>
+<td><code>{user_question}</code></td>
+<td>用户输入</td>
+<td>原始自然语言问题</td>
+</tr>
+</tbody>
+</table>
+<h4>sql_repair_v1.txt</h4>
+<table>
+<thead>
+<tr>
+<th>占位符</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{dialect}</code></td>
+<td>数据库方言</td>
+</tr>
+<tr>
+<td><code>{metadata_json}</code></td>
+<td>与生成时相同的元数据</td>
+</tr>
+<tr>
+<td><code>{user_question}</code></td>
+<td>原始问题</td>
+</tr>
+<tr>
+<td><code>{previous_sql}</code></td>
+<td>上次生成的有问题的 SQL</td>
+</tr>
+<tr>
+<td><code>{error_message}</code></td>
+<td>SQL 执行错误信息</td>
+</tr>
+</tbody>
+</table>
+<h4>result_summary_v1.txt</h4>
+<table>
+<thead>
+<tr>
+<th>占位符</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{user_question}</code></td>
+<td>原始问题</td>
+</tr>
+<tr>
+<td><code>{result_profile}</code></td>
+<td>ResultProfile JSON（rowCount, columnNames, hasData）— 仅统计信息，不含原始数据行</td>
+</tr>
+</tbody>
+</table>
+<h3 id="14-3LLM调用场景汇总" tabindex="-1">14.3 LLM 调用场景汇总</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>LLMService 方法</th>
+<th>Prompt 模板</th>
+<th>LLM 用途</th>
+<th>输出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>意图识别</td>
+<td><code>detectIntent(question)</code></td>
+<td>内嵌（硬编码）</td>
+<td>判断 query/trend/ranking/aggregation/comparison/extreme</td>
+<td>Intent String</td>
+</tr>
+<tr>
+<td>SQL 生成</td>
+<td><code>generateSQL(question, metadataJson, orgId, prompt)</code></td>
+<td>sql_generation_v1.txt</td>
+<td>自然语言 → PostgreSQL SELECT</td>
+<td><code>{sql, explanation, tables_used[], confidence}</code></td>
+</tr>
+<tr>
+<td>SQL 修复</td>
+<td><code>repairSQL(sql, errorMessage, metadataJson)</code></td>
+<td>sql_repair_v1.txt</td>
+<td>错误诊断 + SQL 修正</td>
+<td><code>{sql, explanation, tables_used[], confidence}</code></td>
+</tr>
+<tr>
+<td>图表推荐</td>
+<td><code>recommendChartType(columns, rowCount)</code></td>
+<td>内嵌（硬编码）</td>
+<td>根据列结构推荐 chart 类型</td>
+<td>bar/line/pie/table/kpi</td>
+</tr>
+<tr>
+<td>结果摘要</td>
+<td><code>summarizeResults(question, sql, resultProfile)</code></td>
+<td>result_summary_v1.txt</td>
+<td>ResultProfile → 业务摘要</td>
+<td><code>{summary, key_metrics[]}</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="15-反模式警示" tabindex="-1">15. 反模式警示</h2>
+<p>以下模式在项目中<strong>严格禁止</strong>：</p>
+<h3 id="15-1数据安全" tabindex="-1">15.1 数据安全</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>禁止模式</th>
+<th>原因</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>将 <code>text2report</code> 查询结果行传入 LLM Prompt</strong></td>
+<td>违反 Rule 1：LLM 仅看元数据</td>
+<td>使用 <code>ResultProfile</code> DTO（rowCount/columnNames/hasData）替代原始数据行</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>在 LLMService 中直接访问业务数据库</strong></td>
+<td>违反 Rule 1 和架构分层</td>
+<td>LLM 服务仅处理 Prompt 和 HTTP 通信</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>向 <code>text2report</code> 业务数据库执行写操作</strong></td>
+<td>违反 Rule 3：业务库只读</td>
+<td>所有写操作走 <code>text2report-meta</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="15-2SQL安全" tabindex="-1">15.2 SQL 安全</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>禁止模式</th>
+<th>原因</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td><strong>仅用正则表达式做 SQL 安全校验</strong></td>
+<td>正则可被绕过（注释、编码、多语句）</td>
+<td>必须使用 <code>JSqlParser</code> AST 解析 + Visitor 遍历</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>绕过 <code>SqlGuardService</code> 直接执行 SQL</strong></td>
+<td>违反 Rule 2：无 SQL 可绕过 Guard</td>
+<td>所有 SQL 必须经过 <code>SqlGuardService.validate()</code> + <code>validateOrgScope()</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>使用字符串拼接构造 SQL</strong></td>
+<td>SQL 注入风险</td>
+<td>使用 <code>PreparedStatement</code> 参数化查询</td>
+</tr>
+</tbody>
+</table>
+<h3 id="15-3代码组织" tabindex="-1">15.3 代码组织</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>禁止模式</th>
+<th>原因</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7</td>
+<td><strong>在 Java 源码中硬编码 Prompt 模板</strong></td>
+<td>模板需独立版本化，便于迭代和 A/B 测试</td>
+<td>所有 Prompt 模板放在 <code>/prompts/</code> 目录下</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>绕过 <code>LLMService</code> 接口直接调用 OpenAI/DeepSeek SDK</strong></td>
+<td>违反 Rule 5：接口驱动设计</td>
+<td>所有 LLM 调用通过 <code>LLMService</code> 接口</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>将 LLM API Key 写在 <code>application.yml</code> 中</strong></td>
+<td>凭证泄露风险</td>
+<td>API Key 仅存储在 <code>application-local.yml</code> / <code>application-prod.yml</code>（gitignore）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="15-4前端" tabindex="-1">15.4 前端</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>禁止模式</th>
+<th>原因</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td><strong>前端实现业务逻辑或指标计算</strong></td>
+<td>计算公式应在后端统一管理和审计</td>
+<td>所有指标计算（如毛利率）在 SQL/SqlGuard 层定义</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>前端硬编码指标公式</strong></td>
+<td>与后端不一致的风险</td>
+<td>公式统一由元数据库 glossary 管理</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="16-里程碑历史" tabindex="-1">16. 里程碑历史</h2>
+<table>
+<thead>
+<tr>
+<th>编号</th>
+<th>名称</th>
+<th>日期</th>
+<th>状态</th>
+<th>关键交付物</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0</td>
+<td>项目初始化 &amp; 前端骨架搭建</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>React + Vite + Ant Design 项目骨架，路由，布局</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>管理域前端页面开发</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>所有 Admin 页面组件</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>查询域前端页面开发</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>QueryPage, HistoryPage, FavoritesPage</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>前端联调准备（Mock Server）</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>MSW handlers（auth/query/org/metadata/audit）</td>
+</tr>
+<tr>
+<td>M3-Hotfix</td>
+<td>前端安全与质量修复（第一轮）</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>XSS 防护，输入校验</td>
+</tr>
+<tr>
+<td>M3-Hotfix-R2</td>
+<td>前端安全与质量修复（第二轮）</td>
+<td>—</td>
+<td>✅ 已完成</td>
+<td>M4 前置门槛清零</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>后端 Spring Boot 骨架 + 公共模块</td>
+<td>2026-04-10</td>
+<td>✅ 已完成</td>
+<td>双数据源配置，ApiResult，GlobalExceptionHandler，TraceContext</td>
+</tr>
+<tr>
+<td>M4-Hotfix</td>
+<td>安全与质量修复</td>
+<td>2026-04-10</td>
+<td>✅ 已完成</td>
+<td>P0-1~P0-5 修复（LLM隔离/JWT黑名单/SqlGuard AST重写等）</td>
+</tr>
+<tr>
+<td>M4-Hotfix-R2</td>
+<td>安全与质量修复（第二轮）</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>P0/P1 持续修复</td>
+</tr>
+<tr>
+<td>M4-Hotfix-R3</td>
+<td>安全与质量修复（第三轮）</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>JWT 配置统一，凭证清理</td>
+</tr>
+<tr>
+<td>M4-Hotfix-R4</td>
+<td>安全与质量修复（第四轮）</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>ErrorCode 格式整理</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>组织 + 元数据服务</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>OrgService, MetadataService, DDLParserService</td>
+</tr>
+<tr>
+<td>M5-Hotfix</td>
+<td>Codex 审查缺陷修复</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M5-Hotfix-R2</td>
+<td>Codex 第二轮审查缺陷修复</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>LLM + SQL Guard + Executor 端到端编排</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>OrchestratorService, OpenAILLMService, SqlGuardService, QueryExecutorService</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>结果组装 + Redis 缓存 + 历史/反馈 API</td>
+<td>2026-04-11</td>
+<td>✅ 已完成</td>
+<td>QueryCacheService, HistoryService, FeedbackService, FavoriteService</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>网关 + CORS + 限流 + 审计增强</td>
+<td>2026-04-12</td>
+<td>✅ 已完成</td>
+<td>JwtAuthFilter, RateLimitFilter, SecurityConfig, AuditService</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>前后端联调 + 端到端验收</td>
+<td>2026-04-12</td>
+<td>🟡 代码完成，待真实环境验收</td>
+<td>联调修复，E2E 测试清单</td>
+</tr>
+<tr>
+<td>M10</td>
+<td>权限架构重构 + RAG 向量检索</td>
+<td>2026-04-16</td>
+<td>🟡 代码完成，待真实环境验收</td>
+<td>UserService 权限模型，EmbeddingService，BgeEmbeddingProvider，pgvector</td>
+</tr>
+<tr>
+<td>M11</td>
+<td>后 M10 打磨 + 全栈代码评审</td>
+<td>2026-04-27</td>
+<td>🟡 代码完成，P0 修复待执行</td>
+<td>认证加固，时区统一，UI 打磨，27 个测试文件，全栈评审报告</td>
+</tr>
+<tr>
+<td>M11-P0</td>
+<td>P0 安全修复合并</td>
+<td>2026-05-03</td>
+<td>✅ 已完成</td>
+<td>认证流加固（Cookie 优先 token 提取 + JwtTokenResolver），API 错误标准化（apiError.ts），CSRF 保护（SpaCsrfTokenRequestHandler），PostgresRiskCatalog 强化，前端 request.ts 错误处理标准化</td>
+</tr>
+<tr>
+<td>M11-R1</td>
+<td>架构文档重构 + 元数据 schema 所有权整合</td>
+<td>2026-05-04</td>
+<td>✅ 已完成</td>
+<td>清理 domain/business/ 冗余 MyBatis 映射，修复审计用户画像解析，M12 多模型配置架构文档</td>
+</tr>
+<tr>
+<td>M11-R2</td>
+<td>组织范围智能收缩 + SQL 自动补全 org 过滤</td>
+<td>2026-05-07</td>
+<td>✅ 已完成</td>
+<td>从用户问题中提取组织名称提及并收缩 org scope，SqlGuardService 自动补全缺失的 org_id WHERE 条件，fact/dim_org 回归测试</td>
+</tr>
+<tr>
+<td>M11-R3</td>
+<td>元数据发布生命周期 + SQL 元数据校验 + RAG 相关性评分</td>
+<td>2026-05-11</td>
+<td>✅ 已完成</td>
+<td>DDL 确认后发布流程（draft→published），SqlMetadataValidator 验证生成 SQL 的表/列存在性，TableRelevanceScorer 多维度候选表加权排序（术语引用/示例引用/表类型/元数据质量/向量相似度），AdminTableFilterBar 管理端通用筛选栏</td>
+</tr>
+<tr>
+<td>M12</td>
+<td>多模型配置架构 + 元数据驱动组织范围升级</td>
+<td>—</td>
+<td>🔜 即将启动</td>
+<td>LLM provider 配置化切换，org scope 从代码硬编码升级为元数据驱动</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="17-技术债与待完成项" tabindex="-1">17. 技术债与待完成项</h2>
+<h3 id="17-1P0(阻断性)—已于2026-05-03全部修复" tabindex="-1">17.1 P0 (阻断性) — 已于 2026-05-03 全部修复</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>状态</th>
+<th>修复方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0-1</td>
+<td><code>application.yml</code> vector 数据源默认值泄露 IP/密码</td>
+<td>✅ 已修复</td>
+<td>移除硬编码 IP 和密码，改为环境变量占位符</td>
+</tr>
+<tr>
+<td>P0-2</td>
+<td><code>AuthService</code> 反射调用 <code>JwtUtil</code></td>
+<td>✅ 已修复</td>
+<td>改为直接依赖注入</td>
+</tr>
+<tr>
+<td>P0-3</td>
+<td>JWT token localStorage 存储风险</td>
+<td>✅ 已修复</td>
+<td>改为 httpOnly cookie + Cookie 优先提取（JwtTokenResolver），Bearer 降级经由特性开关控制</td>
+</tr>
+<tr>
+<td>P0-4</td>
+<td><code>ErrorCode.LLM_ERROR</code> 值不一致</td>
+<td>✅ 已修复</td>
+<td>统一错误码值，API 错误处理标准化（apiError.ts）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="17-2P1(重要)—持续收敛中(8项)" tabindex="-1">17.2 P1 (重要) — 持续收敛中 (8 项)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1-1</td>
+<td>OrchestratorService 缺少无限循环保护</td>
+<td>retryCount &gt;= maxRetries 检查存在但存在边界条件风险</td>
+</tr>
+<tr>
+<td>P1-2</td>
+<td>OkHttpClient 应复用而非每次创建</td>
+<td>连接池复用可提升性能</td>
+</tr>
+<tr>
+<td>P1-3</td>
+<td>前端请求去重</td>
+<td>快速双击提交可能触发重复查询</td>
+</tr>
+<tr>
+<td>P1-4</td>
+<td>PostgreSQL 特有危险函数</td>
+<td>pg_read_file/pg_read_binaryfile 等函数已部分纳入 PostgresRiskCatalog，持续扩展中</td>
+</tr>
+<tr>
+<td>P1-5</td>
+<td>前端组件缺少单元测试</td>
+<td>仅后端有测试，前端无组件级测试</td>
+</tr>
+<tr>
+<td>P1-6</td>
+<td>H2 集成测试覆盖不足</td>
+<td>SysUserMapper 已有 H2 集成测试，其他关键 mapper 待扩展</td>
+</tr>
+<tr>
+<td>P1-7</td>
+<td>ResultTable 后端分页改造</td>
+<td>前端已统一 tablePagination.ts 共享分页组件，后端分页待推进</td>
+</tr>
+<tr>
+<td>P1-8</td>
+<td>FavoritesPage / Admin 元数据页前端分页</td>
+<td>无上限保护、全量加载+全量渲染</td>
+</tr>
+</tbody>
+</table>
+<h3 id="17-3P2(改进建议)" tabindex="-1">17.3 P2 (改进建议)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P2-1</td>
+<td>分页参数命名统一：<code>size</code> vs <code>pageSize</code> — 前端已统一 tablePagination.ts</td>
+</tr>
+<tr>
+<td>P2-2</td>
+<td><code>useBackendPagination</code> hook 封装 — 已通过 tablePagination.ts 共享工具部分解决</td>
+</tr>
+<tr>
+<td>P2-3</td>
+<td>ESLint 规则检测前端分页反模式</td>
+</tr>
+<tr>
+<td>P2-4</td>
+<td>PG 向量索引定期维护（HNSW graph 重建）</td>
+</tr>
+<tr>
+<td>P2-5</td>
+<td>游标分页替代 OFFSET 深度分页</td>
+</tr>
+<tr>
+<td>P2-6</td>
+<td>多模型配置架构：LLM provider 从 YAML 扩展为运行时动态切换</td>
+</tr>
+<tr>
+<td>P2-7</td>
+<td>元数据驱动的组织范围升级：org scope 从代码硬编码迁移为元数据表配置</td>
+</tr>
+</tbody>
+</table>
+<h3 id="17-4待执行验收项" tabindex="-1">17.4 待执行验收项</h3>
+<table>
+<thead>
+<tr>
+<th>验收项</th>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>权限链路端到端</td>
+<td>⏳ 待执行</td>
+<td>组织-用户-授权全链路真实环境验证</td>
+</tr>
+<tr>
+<td>RAG 检索验证</td>
+<td>⏳ 待执行</td>
+<td>embeddings/sync、embeddings/search 真实环境验证</td>
+</tr>
+<tr>
+<td>异步向量化</td>
+<td>⏳ 待执行</td>
+<td>DDL/术语/示例保存后自动向量化验收</td>
+</tr>
+<tr>
+<td>组织同步</td>
+<td>⏳ 待执行</td>
+<td>syncFromBusiness 真实业务库验证</td>
+</tr>
+<tr>
+<td>端到端查询</td>
+<td>⏳ 待执行</td>
+<td>按 e2e-test-checklist 逐项验证</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<blockquote>
+<p><strong>生成时间</strong>: 2026-05-11 CST
+<strong>代码版本</strong>: master 分支 (commit: fc1fb50 — 元数据发布生命周期 + SQL 元数据校验 + RAG 相关性评分)
+<strong>文档版本</strong>: v2.0
+<strong>生成工具</strong>: Claude Code</p>
+</blockquote>
+
+
+<p style="color: #999; font-size: 13px; text-align: center; margin-top: 48px;">
+  <strong>Text2Report 系统架构文档 v2.0</strong><br>
+  生成时间: 2026-05-11 CST | 代码版本: master (commit: fc1fb50) | 后端测试: 30 test files 通过<br>
+  文件路径: docs/architecture/architecture_2026-04-30-20.html
+</p>
+
+</main>
+
+<!-- Back to Top Button -->
+<button id="back-to-top" title="Back to top" aria-label="Back to top">↑</button>
+
+<!-- Mermaid Zoom Overlay -->
+<div class="mermaid-zoom-overlay" id="mermaid-overlay">
+  <div class="zoom-toolbar" id="zoom-toolbar" style="display:none">
+    <button id="zoom-out-btn" title="缩小 (Ctrl+-)">−</button>
+    <span class="zoom-label" id="zoom-label">100%</span>
+    <button id="zoom-in-btn" title="放大 (Ctrl+=)">+</button>
+    <span class="zoom-sep"></span>
+    <button id="zoom-reset-btn" title="复位 (Ctrl+0)">↺</button>
+    <span class="zoom-sep"></span>
+    <button id="zoom-close-btn" title="关闭 (Esc)">✕</button>
+  </div>
+  <div class="zoomed-svg-container" id="mermaid-zoomed"></div>
+</div>
+
+<script>
+  // ── Initialize Mermaid ──
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+    sequence: { useMaxWidth: true, showSequenceNumbers: true }
+  });
+
+  // ── Sidebar Scroll Spy ──
+  (function() {
+    const sidebarLinks = document.querySelectorAll('nav#sidebar ul li a');
+    const headings = [];
+    sidebarLinks.forEach(link => {
+      const id = link.getAttribute('href').replace('#', '');
+      const el = document.getElementById(id);
+      if (el) headings.push({ el, link });
+    });
+
+    function onScroll() {
+      let current = headings[0];
+      const scrollY = window.scrollY + 80;
+      for (const h of headings) {
+        if (h.el.offsetTop <= scrollY) current = h;
+      }
+      sidebarLinks.forEach(l => l.classList.remove('active'));
+      if (current) current.link.classList.add('active');
+
+      // Back to top
+      document.getElementById('back-to-top').style.display = window.scrollY > 400 ? 'block' : 'none';
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // ── Back to Top Button ──
+  document.getElementById('back-to-top').addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ── Mermaid Zoom/Pan ──
+  (function() {
+    const overlay = document.getElementById('mermaid-overlay');
+    const zoomedContainer = document.getElementById('mermaid-zoomed');
+    const toolbar = document.getElementById('zoom-toolbar');
+    const zoomLabel = document.getElementById('zoom-label');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+    const zoomCloseBtn = document.getElementById('zoom-close-btn');
+
+    // Pan state
+    let panX = 0, panY = 0;
+    let scale = 1;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragStartPanX = 0, dragStartPanY = 0;
+
+    function updateTransform(svg) {
+      svg.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+    }
+
+    function updateZoomLabel() {
+      zoomLabel.textContent = Math.round(scale * 100) + '%';
+    }
+
+    function resetView(svg) {
+      panX = 0; panY = 0;
+      scale = 1;
+      updateTransform(svg);
+      updateZoomLabel();
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+      toolbar.style.display = 'none';
+      zoomedContainer.innerHTML = '';
+    }
+
+    // Wait for mermaid to finish rendering
+    setTimeout(() => {
+      document.querySelectorAll('pre.mermaid').forEach(pre => {
+        // Add zoom hint
+        const hint = document.createElement('span');
+        hint.className = 'mermaid-zoom-hint';
+        hint.textContent = '🔍 双击放大 (可拖拽/滚轮缩放)';
+        pre.style.position = 'relative';
+        pre.appendChild(hint);
+
+        // Double-click to zoom
+        pre.addEventListener('dblclick', (e) => {
+          const svg = pre.querySelector('svg');
+          if (!svg) return;
+          zoomedContainer.innerHTML = '';
+          const clone = svg.cloneNode(true);
+          clone.removeAttribute('width');
+          clone.removeAttribute('height');
+          zoomedContainer.appendChild(clone);
+          resetView(clone);
+          overlay.classList.add('active');
+          toolbar.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        });
+      });
+    }, 1200);
+
+    // ── Pan: mouse drag ──
+    zoomedContainer.addEventListener('mousedown', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartPanX = panX;
+      dragStartPanY = panY;
+      zoomedContainer.classList.add('grabbing');
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      panX = dragStartPanX + (e.clientX - dragStartX);
+      panY = dragStartPanY + (e.clientY - dragStartY);
+      updateTransform(svg);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        zoomedContainer.classList.remove('grabbing');
+      }
+    });
+
+    // ── Zoom: mouse wheel (cursor-centered) ──
+    zoomedContainer.addEventListener('wheel', (e) => {
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      e.preventDefault();
+
+      const rect = svg.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const oldScale = scale;
+      const newScale = e.deltaY < 0 ? scale * 1.12 : scale * 0.88;
+      scale = Math.max(0.15, Math.min(8, newScale));
+
+      // Zoom toward cursor position
+      const scaleRatio = scale / oldScale;
+      panX = mx - scaleRatio * (mx - panX);
+      panY = my - scaleRatio * (my - panY);
+
+      updateTransform(svg);
+      updateZoomLabel();
+    }, { passive: false });
+
+    // ── Toolbar buttons ──
+    zoomInBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      scale = Math.min(8, scale * 1.2);
+      updateTransform(svg);
+      updateZoomLabel();
+    });
+
+    zoomOutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      scale = Math.max(0.15, scale * 0.8333);
+      updateTransform(svg);
+      updateZoomLabel();
+    });
+
+    zoomResetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      resetView(svg);
+    });
+
+    zoomCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeOverlay();
+    });
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', (e) => {
+      if (!overlay.classList.contains('active')) return;
+      const svg = zoomedContainer.querySelector('svg');
+      if (!svg) return;
+      switch (e.key) {
+        case 'Escape':
+          closeOverlay();
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          scale = Math.min(8, scale * 1.2);
+          updateTransform(svg);
+          updateZoomLabel();
+          break;
+        case '-':
+          e.preventDefault();
+          scale = Math.max(0.15, scale * 0.8333);
+          updateTransform(svg);
+          updateZoomLabel();
+          break;
+        case '0':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            resetView(svg);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          panY -= 40 / scale;
+          updateTransform(svg);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          panY += 40 / scale;
+          updateTransform(svg);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          panX -= 40 / scale;
+          updateTransform(svg);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          panX += 40 / scale;
+          updateTransform(svg);
+          break;
+      }
+    });
+
+    // Click overlay background to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeOverlay();
+      }
+    });
+  })();
+
+  // ── Smooth scroll for sidebar links ──
+  document.querySelectorAll('nav#sidebar a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const id = this.getAttribute('href').replace('#', '');
+      const target = document.getElementById(id);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.pushState(null, null, '#' + id);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

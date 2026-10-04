@@ -1,0 +1,307 @@
+{
+  "version": "2026-05-10",
+  "schema_source": "sql/schema-business.sql",
+  "description": "Golden query set for metadata retrieval, prompt table selection, and SQL structure regression.",
+  "queries": [
+    {
+      "id": "GQ-001",
+      "question": "2024年子公司A各产品的毛利金额是多少？",
+      "org_id": 2,
+      "intent": "aggregation",
+      "time_grain": "yearly",
+      "dimensions": ["product"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org", "dim_product"],
+      "expected_columns": ["period_month", "org_id", "product_id", "gross_profit", "org_name", "product_name"],
+      "expected_glossary_terms": ["毛利"],
+      "expected_example_hints": ["按产品汇总毛利"],
+      "acceptable_sql_patterns": [
+        "GROUP BY.*product",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost",
+        "WHERE.*org_id",
+        "JOIN.*dim_product"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "FROM.*dim_org.*WHERE(?!.*JOIN)"
+      ],
+      "tags": ["aggregation", "product_dimension", "yearly", "single_subsidiary", "pollution_regression"],
+      "notes": "验证按产品维度的毛利汇总，确保使用正确的事实表而非假表 fact_gross_profit；invalid table pollution regression case"
+    },
+    {
+      "id": "GQ-002",
+      "question": "2024年3月子公司A下面哪些部门毛利最高？",
+      "org_id": 2,
+      "intent": "ranking",
+      "time_grain": "monthly",
+      "dimensions": ["organization"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org"],
+      "expected_columns": ["period_month", "org_id", "gross_profit", "org_name", "org_level", "parent_id"],
+      "expected_glossary_terms": ["毛利"],
+      "expected_example_hints": ["部门毛利排名"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_org",
+        "WHERE.*period_month",
+        "WHERE.*org_id",
+        "GROUP BY.*org",
+        "ORDER BY.*SUM.*DESC|ORDER BY.*gross_profit.*DESC"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "SELECT \\*"
+      ],
+      "tags": ["ranking", "organization_dimension", "monthly", "department_rank"],
+      "notes": "验证部门层级的月度毛利排名，需要通过 dim_org 展示部门名称。"
+    },
+    {
+      "id": "GQ-003",
+      "question": "2024年各季度子公司B的毛利变化趋势怎么样？",
+      "org_id": 3,
+      "intent": "trend",
+      "time_grain": "quarterly",
+      "dimensions": ["organization", "time"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org"],
+      "expected_columns": ["period_date", "period_month", "org_id", "gross_profit", "org_name"],
+      "expected_glossary_terms": ["毛利", "季度"],
+      "expected_example_hints": ["季度毛利趋势"],
+      "acceptable_sql_patterns": [
+        "DATE_TRUNC.*quarter|EXTRACT.*QUARTER|period_month",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost",
+        "WHERE.*org_id",
+        "ORDER BY.*period|ORDER BY.*quarter"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "JOIN.*dim_product"
+      ],
+      "tags": ["trend", "organization_dimension", "quarterly", "single_subsidiary"],
+      "notes": "验证季度趋势问题应聚合时间维度，而不是按产品或渠道展开。"
+    },
+    {
+      "id": "GQ-004",
+      "question": "2024年5月不同产品在各销售渠道上的毛利表现有什么差异？",
+      "org_id": 1,
+      "intent": "comparison",
+      "time_grain": "monthly",
+      "dimensions": ["product", "channel"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_product", "dim_channel"],
+      "expected_columns": ["period_month", "product_id", "channel_id", "gross_profit", "product_name", "channel_name"],
+      "expected_glossary_terms": ["毛利"],
+      "expected_example_hints": ["产品渠道毛利对比"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_product",
+        "JOIN.*dim_channel",
+        "GROUP BY.*product",
+        "GROUP BY.*channel",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "GROUP BY.*org_name"
+      ],
+      "tags": ["comparison", "product_dimension", "channel_dimension", "monthly", "dual_dimension"],
+      "notes": "验证产品和渠道双维组合下的对比分析。"
+    },
+    {
+      "id": "GQ-005",
+      "question": "今年以来各子公司的累计毛利分别是多少？",
+      "org_id": 1,
+      "intent": "aggregation",
+      "time_grain": "ytd",
+      "dimensions": ["organization"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org"],
+      "expected_columns": ["period_date", "period_month", "org_id", "gross_profit", "org_name", "org_level", "parent_id"],
+      "expected_glossary_terms": ["毛利", "今年以来"],
+      "expected_example_hints": ["累计毛利", "子公司汇总"],
+      "acceptable_sql_patterns": [
+        "WHERE.*period_date|WHERE.*period_month",
+        "JOIN.*dim_org",
+        "GROUP BY.*org",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "JOIN.*dim_cost_item"
+      ],
+      "tags": ["aggregation", "organization_dimension", "fuzzy_time", "year_to_date"],
+      "notes": "验证“今年以来”这类模糊时间表达能落到 period_date 或 period_month。"
+    },
+    {
+      "id": "GQ-006",
+      "question": "2024年6月子公司C各部门分别销售了哪些产品，收入、成本和毛利是多少？",
+      "org_id": 4,
+      "intent": "query",
+      "time_grain": "monthly",
+      "dimensions": ["organization", "product"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org", "dim_product"],
+      "expected_columns": ["period_month", "org_id", "product_id", "revenue", "cost", "gross_profit", "org_name", "product_name"],
+      "expected_glossary_terms": ["毛利", "收入", "成本"],
+      "expected_example_hints": ["部门产品明细"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_org",
+        "JOIN.*dim_product",
+        "WHERE.*period_month",
+        "WHERE.*org_id",
+        "revenue",
+        "cost",
+        "gross_profit"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "SUM.*SUM"
+      ],
+      "tags": ["query", "organization_dimension", "product_dimension", "monthly", "dual_dimension"],
+      "notes": "验证明细查询不应过度聚合，同时仍需使用正确事实表和维表。"
+    },
+    {
+      "id": "GQ-007",
+      "question": "2024年第二季度哪个销售渠道贡献的毛利最多？",
+      "org_id": 1,
+      "intent": "ranking",
+      "time_grain": "quarterly",
+      "dimensions": ["channel"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_channel"],
+      "expected_columns": ["period_date", "period_month", "channel_id", "gross_profit", "channel_name"],
+      "expected_glossary_terms": ["毛利", "季度"],
+      "expected_example_hints": ["渠道毛利排名"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_channel",
+        "GROUP BY.*channel",
+        "ORDER BY.*SUM.*DESC|ORDER BY.*gross_profit.*DESC",
+        "LIMIT",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "JOIN.*dim_cost_item"
+      ],
+      "tags": ["ranking", "channel_dimension", "quarterly"],
+      "notes": "验证渠道维度的季度排名，Top 结果应基于毛利聚合。"
+    },
+    {
+      "id": "GQ-008",
+      "question": "2024年各子公司的年度毛利总额是多少？",
+      "org_id": 1,
+      "intent": "aggregation",
+      "time_grain": "yearly",
+      "dimensions": ["organization"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org"],
+      "expected_columns": ["period_month", "org_id", "gross_profit", "org_name", "org_level", "parent_id"],
+      "expected_glossary_terms": ["毛利"],
+      "expected_example_hints": ["年度毛利汇总", "子公司毛利"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_org",
+        "GROUP BY.*org",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost",
+        "WHERE.*period"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "FROM.*dim_org.*WHERE(?!.*JOIN)"
+      ],
+      "tags": ["aggregation", "organization_dimension", "yearly", "pollution_regression"],
+      "notes": "年度组织汇总场景，问题语义容易诱导到假表 fact_gross_profit；invalid table pollution regression case"
+    },
+    {
+      "id": "GQ-009",
+      "question": "最近半年各产品的毛利走势有没有明显变化？",
+      "org_id": 1,
+      "intent": "trend",
+      "time_grain": "rolling_half_year",
+      "dimensions": ["product", "time"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_product"],
+      "expected_columns": ["period_date", "period_month", "product_id", "gross_profit", "product_name"],
+      "expected_glossary_terms": ["毛利", "最近半年"],
+      "expected_example_hints": ["产品毛利趋势"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_product",
+        "GROUP BY.*period",
+        "GROUP BY.*product",
+        "ORDER BY.*period",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "JOIN.*dim_cost_item"
+      ],
+      "tags": ["trend", "product_dimension", "fuzzy_time", "pollution_regression"],
+      "notes": "最近半年产品趋势场景，必须走 fact_gross_profit_detail；invalid table pollution regression case"
+    },
+    {
+      "id": "GQ-010",
+      "question": "2024年4月子公司A毛利最低的部门是哪一个？",
+      "org_id": 2,
+      "intent": "extreme",
+      "time_grain": "monthly",
+      "dimensions": ["organization"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_org"],
+      "expected_columns": ["period_month", "org_id", "gross_profit", "org_name", "org_level", "parent_id"],
+      "expected_glossary_terms": ["毛利"],
+      "expected_example_hints": ["毛利最低部门"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_org",
+        "WHERE.*period_month",
+        "WHERE.*org_id",
+        "GROUP BY.*org",
+        "ORDER BY.*SUM.*ASC|ORDER BY.*gross_profit.*ASC",
+        "LIMIT"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "ORDER BY.*DESC"
+      ],
+      "tags": ["extreme", "organization_dimension", "monthly", "minimum"],
+      "notes": "验证极值问题中的最低值方向，避免生成最高排名。"
+    },
+    {
+      "id": "GQ-011",
+      "question": "2024年第一季度和第二季度各渠道毛利相比有什么变化？",
+      "org_id": 1,
+      "intent": "comparison",
+      "time_grain": "quarterly",
+      "dimensions": ["channel", "time"],
+      "expected_tables": ["fact_gross_profit_detail", "dim_channel"],
+      "expected_columns": ["period_date", "period_month", "channel_id", "gross_profit", "channel_name"],
+      "expected_glossary_terms": ["毛利", "季度"],
+      "expected_example_hints": ["季度渠道对比"],
+      "acceptable_sql_patterns": [
+        "JOIN.*dim_channel",
+        "GROUP BY.*channel",
+        "GROUP BY.*quarter|GROUP BY.*period",
+        "SUM.*gross_profit|SUM.*revenue.*-.*cost",
+        "ORDER BY.*channel|ORDER BY.*quarter|ORDER BY.*period"
+      ],
+      "forbidden_sql_patterns": [
+        "fact_gross_profit[^_]",
+        "JOIN.*dim_product"
+      ],
+      "tags": ["comparison", "channel_dimension", "quarterly"],
+      "notes": "验证季度间渠道毛利对比，需要同时保留渠道和季度维度。"
+    },
+    {
+      "id": "GQ-012",
+      "question": "2024年子公司A各成本项目的实际成本金额明细有哪些？",
+      "org_id": 2,
+      "intent": "query",
+      "time_grain": "yearly",
+      "dimensions": ["cost_item"],
+      "expected_tables": ["fact_cost_detail", "dim_cost_item", "dim_org"],
+      "expected_columns": ["period_month", "org_id", "cost_item_id", "cost_amount", "allocation_rule", "cost_item_name", "cost_category", "org_name"],
+      "expected_glossary_terms": ["成本", "成本项目"],
+      "expected_example_hints": ["成本项目明细"],
+      "acceptable_sql_patterns": [
+        "FROM.*fact_cost_detail",
+        "JOIN.*dim_cost_item",
+        "JOIN.*dim_org",
+        "cost_amount",
+        "WHERE.*org_id"
+      ],
+      "forbidden_sql_patterns": [
+        "FROM.*fact_gross_profit_detail",
+        "fact_gross_profit[^_]",
+        "budget_cost_amount"
+      ],
+      "tags": ["query", "cost_item_dimension", "yearly", "cross_fact", "cost_detail"],
+      "notes": "跨事实表样本，成本相关查询应使用 fact_cost_detail 和 dim_cost_item，而不是毛利事实表。"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.text2report.domain.meta.mapper.MetaGlossaryMapper">
+
+    <resultMap id="BaseResultMap" type="com.text2report.domain.meta.entity.MetaGlossary">
+        <id column="id" property="id"/>
+        <result column="term" property="term"/>
+        <result column="definition" property="definition"/>
+        <result column="sql_snippet" property="sqlSnippet"/>
+        <result column="aliases" property="aliases"/>
+        <result column="org_scope" property="orgScope"/>
+        <result column="active" property="active"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+</mapper>
